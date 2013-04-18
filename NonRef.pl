@@ -10,7 +10,11 @@ cut -f1 scaf_log_file | NonRef.pl seq_file
 
 =head1 DESCRIPTION
 
-Produces a file of sequences that do not match the reference. 
+Produces a file of sequences that do not match the reference.
+
+Sequences < 500 bp in length are also excluded
+
+=head1 NOTES
 
 Designed to work with the output of ScafTranscripts.pl, but any other list of sequence
 names to be excluded could be piped in 
