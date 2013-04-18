@@ -15,7 +15,7 @@ ScafTranscripts.pl -s contig_seqs.fa -r reference_seqs.fa -b blast_results.bl [-
 
 =head1 AUTHOR
 
- Heath E. O'Brien E<lt>heath.obrien-at-utoronto-dot-caE<gt>
+ Heath E. O'Brien E<lt>heath.obrien-at-gmail-dot-comE<gt>
 
 =cut
 ####################################################################################################
@@ -69,14 +69,14 @@ while (<$infile>) {
   if ( $result{'query_name'} eq $previous ) { next; } #skip all but first line for each query_id
   $previous = $result{'query_name'};
   if ( $result{'percent'} < 70 ) { next; }
-  my $query_seq = $contig_inx->fetch($result{'query_name'})  or die "could not find sequence $result{'query_name'}\n";
   my $skip = 0;
   if ( $result{'hit_start'} > 15  and $result{'query_start'} > 45 ) { $skip =1;}   #skip contigs with >45 bp of non-homologous overlap with hit
   if ( $result{'hit_length'} - $result{'hit_end'} > 15 and $result{'query_length'} - $result{'query_end'} > 45 ) {$skip = 1; }
   if ( $skip ) {
+    my $query_seq = $contig_inx->fetch($result{'query_name'})  or die "could not find sequence $result{'query_name'}\n";
     if ( $result{'hit_strand'} == -1 ) { $query_seq = $query_seq->revcom; }
     $outfile->write_seq($query_seq);
-    print $log FlattenBlast(\%result), "\n";
+    print $log FlattenBlast(\%result), "\tTo much non_homologous to join\n";
   }
   elsif ( $hits{$result{'hit_name'}} ) {
     my @contigs = @{$hits{$result{'hit_name'}}};
