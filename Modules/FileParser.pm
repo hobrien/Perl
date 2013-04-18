@@ -151,20 +151,38 @@ sub FlattenBlast {
   push(@fields, $tags{'gap'} ); 
   delete  $tags{'gap'};
   unless (exists $tags{'query_start'} ) { die "no query_start tag\n"; }
-  push(@fields, $tags{'query_start'} ); 
-  delete  $tags{'query_start'};
   unless (exists $tags{'query_end'} ) { die "no query_end tag\n"; }
-  push(@fields, $tags{'query_end'} ); 
+  unless (exists $tags{'query_strand'} ) { die "no query_strand tag\n"; }
+  if ( $tags{'query_strand'} == 1 ) {
+    push(@fields, ($tags{'query_start'},$tags{'query_end'}) ); 
+  }
+  elsif ( $tags{'query_strand'} == -1 ) {
+    push(@fields, ($tags{'query_end'}, $tags{'query_start'}) ); 
+  }
+  else { 
+    die "query_strand tag $tags{'query_strand'} not recognized. Should be 1 or -1\n"; 
+  }
+  delete  $tags{'query_start'};
   delete  $tags{'query_end'};
+  delete  $tags{'query_strand'};
   unless (exists $tags{'query_frame'} ) { die "no query_frame tag\n"; }
   push(@fields, $tags{'query_frame'} );
   delete  $tags{'query_frame'};
   unless (exists $tags{'hit_start'} ) { die "no hit_start tag\n"; }
-  push(@fields, $tags{'hit_start'} ); 
-  delete  $tags{'hit_start'};
   unless (exists $tags{'hit_end'} ) { die "no hit_end tag\n"; }
-  push(@fields, $tags{'hit_end'} ); 
+  unless (exists $tags{'hit_strand'} ) { die "no hit_strand tag\n"; }
+  if ( $tags{'hit_strand'} == 1 ) {
+    push(@fields, ($tags{'hit_start'},$tags{'hit_end'}) ); 
+  }
+  elsif ( $tags{'hit_strand'} == -1 ) {
+    push(@fields, ($tags{'hit_end'}, $tags{'hit_start'}) ); 
+  }
+  else { 
+    die "hit_strand tag $tags{'hit_strand'} not recognized. Should be 1 or -1\n"; 
+  }
+  delete  $tags{'hit_start'};
   delete  $tags{'hit_end'};
+  delete  $tags{'hit_strand'};
   unless (exists $tags{'hit_frame'} ) { die "no hit_frame tag\n"; }
   push(@fields, $tags{'hit_frame'} );
   delete  $tags{'hit_frame'};
