@@ -15,7 +15,7 @@ Produces a file of sequences that do not match the reference.
 Designed to work with the output of ScafTranscripts.pl, but any other list of sequence
 names to be excluded could be piped in 
 
-
+Sequences are written to a file called INFILE_nonref.fa
 =head1 AUTHOR
 
  Heath E. O'Brien E<lt>heath.obrien-at-gmail-dot-comE<gt>

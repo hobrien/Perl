@@ -1,4 +1,34 @@
 #!/usr/bin/perl -w
+
+=head1 NAME
+
+TopHit.pl version 2, 18 April 2013
+
+=head1 SYNOPSIS
+
+cat BLASTRESULT | TopHit.pl > OUTFILE
+
+=head1 DESCRIPTION
+
+Excludes all but the top hit for each query. In cases where 2 or more queries have the
+same top hit, it also exlcudes all but the one with the highest score.
+
+Result is one blast result for each query and for each hit.
+
+=head2 NOTES
+
+Does not combine multiple hits to the same hit sequence, which will definitley be 
+necessary when applying it to scaffolded results. The code to deal with this is in
+CombineHits.pl, which can be run on blast results prior to running this script, or the
+code can be added here.
+
+=head1 AUTHOR
+
+ Heath E. O'Brien E<lt>heath.obrien-at-gmail-dot-comE<gt>
+
+=cut
+####################################################################################################
+
 use warnings;
 use strict;
 use Bio::Index::Fasta;
@@ -8,7 +38,7 @@ $ENV{BIOPERL_INDEX_TYPE} = "SDBM_File";
 
 my $usage = "cat BLASTFILE | TopHit.pl > OUTFILE";
 
-#parse blast hits and make a hash of tops hits (as well as info about multihits)
+#parse blast hits and make a hash of tops hits
 my $query_name = 'Init';
 my %top_hits;
 

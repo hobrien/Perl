@@ -25,10 +25,6 @@ automatically generate the figure in R
 =cut
 
 
-=head
-
-=cut
-
 ####################################################################################################
 #see http://statistics.ats.ucla.edu/stat/r/faq/venn.htm for instructions on preparing the input file
 #use library(VennDiagram) in R
