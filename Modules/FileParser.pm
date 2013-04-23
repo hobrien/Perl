@@ -14,7 +14,7 @@ sub WriteFasta {
 sub ParseGTF {
   my $line = shift;
   chomp($line);
-  my @fields = split(/\t/, $line);
+  my @fields = split(/\s*\t\s*/, $line);
   my %tags;
   foreach (split(/;\s*/, pop(@fields) ) ) {
     $_ =~ s/"//g;
