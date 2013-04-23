@@ -1,9 +1,15 @@
 package FileParser;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK =qw(ParseBlast ParseGTF FlattenGTF FlattenBlast);
+@EXPORT_OK =qw(ParseBlast ParseGTF FlattenGTF FlattenBlast WriteFasta);
 use strict;
 use warnings;
+
+sub WriteFasta {
+  my $seq = shift;
+  $seq =~ s/([^\n]{60})/$1\n/g;
+  return $seq;
+}
 
 sub ParseGTF {
   my $line = shift;
