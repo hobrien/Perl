@@ -17,6 +17,7 @@ sub ParseGTF {
   my @fields = split(/\t/, $line);
   my %tags;
   foreach (split(/;\s*/, pop(@fields) ) ) {
+    $_ =~ s/"//g;
     my @attribute = split(/\s+/, $_);
     $tags{$attribute[0]} = $attribute[1];
   }
