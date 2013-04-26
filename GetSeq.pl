@@ -45,7 +45,7 @@ my $infilename = shift;
 my $inx_name = $infilename . ".inx";
 my $inx = Bio::Index::Fasta->new(-filename => $inx_name, -write_flag => 1);
 
-if ( $name and $name =~ /^acc/ ) {
+if ( $format and $format =~ /^acc/ ) {
   $inx->id_parser(\&get_acc);
 }
 
