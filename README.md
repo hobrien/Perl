@@ -4,9 +4,11 @@ Perl scripts for genomic analysis:
 
 AddMapMan.pl -Takes the output of MapMan annotation and adds results to a list of gene_IDs 
 
+AllSelaginella.pl -Runs a command on all KRAUS, MOEL, UNC and WILD datasets
+
 CombineCounts.pl, -Combine the output from DESeq for each species, providing counts and significance
 
-CompareColumns.pl -Compares the values in the specified columns and produces Venn diagram code
+CompareSets.pl -Compares the values in the first column of files and produces Venn diagram code
 
 ContigStats.pl -Prints basic info about the sequences in a file
 
@@ -17,6 +19,8 @@ Ensembl.pl -Testing the functionality of the Ensembl API
 ExtractEntrez.pl -Search for genbank accession numbers and generat a entrez query to limit blast results
 
 FilterSeq.pl -filtering sequences on min and/or max length
+
+GetSeqs.pl -indexes fasta file and retrieves specified sequences
 
 GetSeqsByGeneID.pl - Matches GeneIDs to contig names and outputs seqs matching list of GeneIDs
 
@@ -39,6 +43,12 @@ FileParser.pl -subroutines to read and write GTF and (modified) blast tabular en
 =========================================================================================
 t Folder of test datasets
 
-test.fa - one sequence (1225bp plus 220 -'s, 26 n's)
+test.bl - two blast hits with names corresponding to test.fa, opposite strands
+
+test.fa - two sequences (each 1225bp plus 220 -'s, 26 n's), second is the revcom of the first
+
+test.gtf -gtf with 5 exon features (3 match the same ref gene (2 consecutive), one does not match ref)
 
 raw_seq.txt - one sequence (1225bp plus 220 -'s, 26 n's) with no fasta header
+
+
