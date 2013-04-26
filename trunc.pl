@@ -32,7 +32,7 @@ considerably. Any edits to the main program here should be replicated in that sc
 
 use strict;
 use warnings;
-use Bio::Seq;
+use Bio::SeqIO;
 
 my $usage = "type perldoc trunc.pl for help";
 
@@ -40,33 +40,24 @@ my $name = 1;
 if ( $ARGV[0] eq "-s" ) { $name = 0; shift; }
   
 my $seq_start = shift or die $usage;
-my $seq_end;
-unless ( $seq_end = shift ) { $seq_end = 'end'; }
-my $seq;
-while (<>) {
-  chomp;
-  if ( $_ =~ /^>/ ) {
-    if ( $seq ) { print TruncSeq($seq, $seq_start, $seq_end), "\n"; }
-    print "$_\n";
-    $seq = '';
-  }
-  else {
-    if ( $_ =~ /([^acgtnACGTN])/ ) { warn "Non-standard character $1 in sequence $_\n"; }
-    $seq .= $_;
-  }
-}
-print TruncSeq($seq, $seq_start, $seq_end), "\n";
+my $seq_end = shift;
 
+my $seqin = Bio::SeqIO->new(
+                            -file   => "cat |",
+                            -format => 'fasta',
+                            );
 
-sub TruncSeq {
-  my $seq = shift;
-  my $seq_start = shift;
-  my $seq_end = shift;
+my $seqout = Bio::SeqIO->new(
+                             -file => "| cat",
+                             -format => 'Fasta',
+                             );
+
+while ( my $seq = $seqin->next_seq ) {
+  unless ( $seq_end ) { $seq_end = length($seq); }
   if ( $seq_start < 0 ) { $seq_start = length($seq) - $seq_start + 1; }
-  if ( $seq_end eq 'end' ) { $seq_end = length($seq); }
-  elsif ( $seq_end < 0 ) { $seq_end = length($seq) - $seq_end + 1; }
+  if ( $seq_end < 0 ) { $seq_end = length($seq) - $seq_end + 1; }
   if ( $seq_end < $seq_start ) { my $temp = $seq_start; $seq_start = $seq_end; $seq_end = $temp; }
   unless ($seq_start == 0 ) { $seq_start --; }
-#  print "start: $seq_start, length: ", $seq_end, " - ", $seq_start, " = ", $seq_end - $seq_start, "\n";
-  return substr($seq, $seq_start, $seq_end - $seq_start);
+  $seq->seq($seq->subseq($seq_start, $seq_end));
+  $seqout->write_seq($seq);
 }
