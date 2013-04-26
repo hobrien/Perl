@@ -26,12 +26,10 @@ Can specify files for input and/or output or use STDIN/STDOUT
 use strict;
 use warnings;
 use Bio::SeqIO;
-use File::Basename;
 use Getopt::Long;
-use FileParser qw(WriteFasta);
 
-my $infilename;
-my $outfilename;
+my $infilename = "cat |";
+my $outfilename = "| cat";
 my $min = 0;
 my $max = 999999999999;
 
@@ -43,27 +41,21 @@ GetOptions(
 'maximum:s' => \$max
 );
 
-open(my $outfile, "> ".($outfilename || '-'))  or die;
-open(my $infile, "< ".($infilename || '-'))  or die;
+unless ( $outfilename eq "| cat" ) { $outfilename = ">" . $outfilename; }
 
-my $seq;
-my $name;
-my $gaps = 0;
-while (<$infile>) {
-  chomp;
-  if ( $_ =~ /^>/ ) {
-    if ( $seq and length($seq)-$gaps <= $max and length($seq)-$gaps >= $min ) { print $outfile "$name\n", WriteFasta($seq), "\n"; }
-    $name = $_;
-    $seq = '';
-    $gaps = 0;
-  }
-  else {
-    if ( $_ =~ /([^acgtnACGTN\-?])/ ) { warn "Non-standard character $1 in sequence $_\n"; }
-    foreach ($_ =~ /-/g ) { $gaps ++; }
-    $seq .= $_;
-  }
+my $seqin = Bio::SeqIO->new(
+                            -file   => $infilename,
+                            -format => 'fasta',
+                            );
+
+my $seqout = Bio::SeqIO->new(
+                             -file => $outfilename,
+                             -format => 'Fasta',
+                             );
+
+while ( my $seq = $seqin->next_seq ) {
+  my $gaps = 0;
+  foreach ($seq->seq =~ /-/g ) { $gaps ++; };
+  if ( $seq->length - $gaps <= $max and $seq->length - $gaps >= $min ) { $seqout->write_seq($seq); }
 }
-if ( $name ) { print $outfile "$name\n"; }
-if ( $seq and length($seq) - $gaps <= $max and length($seq) - $gaps >= $min ) { print $outfile WriteFasta($seq), "\n"; }
-
   
