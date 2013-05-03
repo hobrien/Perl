@@ -28,6 +28,8 @@ NonRef.pl - Creates a file sequences that do not match a list of names
 
 ScafTranscritps.pl -Combines contigs that blast to the same reference gene
 
+SigDigits.pl -a simple script to trim all numbers in a csv file to the specified number of digits
+
 Temp - a folder for quick scripts that do not need to be added to the repo
 
 TopHit.pl -Excludes sub-optimal hits for each query and sub-optimal queries for each hit
