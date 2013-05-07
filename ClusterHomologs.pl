@@ -10,7 +10,7 @@ cat BLASTRESULT | ClusterHomologs.pl > OUTFILE
 
 =head1 DESCRIPTION
 
-Clusters sequences by blast eValue using single-linkage clustering
+Clusters sequences by blast Evalue using single-linkage clustering
 
 
 =head2 NOTES
@@ -37,6 +37,7 @@ my $usage = "cat BLASTFILE | TopHit.pl > OUTFILE";
 
 my %clusters; #hash of arrays
 my %cluster_id; #cluster membership for each sequence.
+my %strand;
 my $cluster_num = 0;
 
 while (<>) {
@@ -51,6 +52,8 @@ while (<>) {
         foreach ( @{$clusters{$cluster_id{$result{'hit_name'}}}} ) { 
           $cluster_id{$_} = $cluster_id{$result{'query_name'}};
           push(@{$clusters{$cluster_id{$result{'query_name'}}}}, $_);
+          #modify strand information
+          if ( $result{'hit_strand'} == -1 ) { $strand{$_} = 0 - $strand{$_}; }   
         }
         delete $clusters{$old_cluster};
       }
@@ -58,25 +61,35 @@ while (<>) {
     else { #add hit sequence to query cluster
       $cluster_id{$result{'hit_name'}} = $cluster_id{$result{'query_name'}};
       push(@{$clusters{$cluster_id{$result{'query_name'}}}}, $result{'hit_name'});
+    #record strand information
+    if ( $result{'hit_strand'} == 1 ) { $strand{$result{'hit_name'}} = $strand{$result{'query_name'}}; }
+    else { $strand{$result{'hit_name'}} = 0 - $strand{$result{'query_name'}}; }   
     }
   }
   elsif ( $cluster_id{$result{'hit_name'}} ) {  #add query sequence to hit cluster
     $cluster_id{$result{'query_name'}} = $cluster_id{$result{'hit_name'}};
     push(@{$clusters{$cluster_id{$result{'hit_name'}}}}, $result{'query_name'});
+    #record strand information
+    if ( $result{'hit_strand'} == 1 ) { $strand{$result{'query_name'}} = $strand{$result{'hit_name'}}; }
+    else { $strand{$result{'query_name'}} = 0 - $strand{$result{'hit_name'}}; }   
   }
   else { #hit and query constitute a new cluster
     $cluster_num ++;
     $cluster_id{$result{'query_name'}} = $cluster_num; 
     $cluster_id{$result{'hit_name'}} = $cluster_num;
     $clusters{$cluster_num} = [$result{'query_name'}, $result{'hit_name'} ];
+    #record strand information
+    $strand{$result{'query_name'}} = 1;
+    if ( $result{'hit_strand'} == 1 ) { $strand{$result{'hit_name'}} = 1; }
+    else { $strand{$result{'hit_name'}} = -1; }
   }
 }
-#foreach ( sort keys %cluster_id ) {
-#  print "$_: Cluster $cluster_id{$_}\n";
-#}
-
-foreach ( sort {$a <=> $b} keys %clusters ) {
-  print "Cluster$_\t", scalar(@{$clusters{$_}}), "\t";
-  print join(",", @{$clusters{$_}}), "\n";
+foreach ( sort keys %cluster_id ) {
+  print "$_\tCluster", "$cluster_id{$_}\t$strand{$_}\n";
 }
+
+#foreach ( sort {$a <=> $b} keys %clusters ) {
+#  print "Cluster$_\t", scalar(@{$clusters{$_}}), "\t";
+#  print join(",", @{$clusters{$_}}), "\n";
+#}
     
