@@ -12,12 +12,15 @@ cat BLASTRESULT | ClusterHomologs.pl > OUTFILE
 
 Clusters sequences by blast Evalue using single-linkage clustering
 
-
 =head2 NOTES
 
 Groups sequences that have significant blast hits. If a sequence has a significant blast
 to any sequence in a group, then it is added to that group and if any sequences in
 different groups have significant blast hits to each other the groups are merged.
+
+Generates 2 outfiles: 
+  cluster_summary.txt: info about cluster size and membership for each cluster
+  cluster_id: cluster number and orientation for each sequence
 
 =head1 AUTHOR
 
@@ -28,23 +31,20 @@ different groups have significant blast hits to each other the groups are merged
 
 use warnings;
 use strict;
-#use Bio::Index::Fasta;
-#use Bio::SeqIO;
-use FileParser qw(ParseBlast FlattenBlast);
-#$ENV{BIOPERL_INDEX_TYPE} = "SDBM_File";
+use FileParser qw(ParseBlast);
 
-my $usage = "cat BLASTFILE | TopHit.pl > OUTFILE";
+my $usage = "cat BLASTFILE | ClusterHomologs.pl evalue";
 
 my %clusters; #hash of arrays
 my %cluster_id; #cluster membership for each sequence.
 my %strand;
 my $cluster_num = 0;
-
+my $evalue = shift;
 while (<>) {
   chomp;
   $_ =~ s/,\s*/\t/g;
   my %result = % {ParseBlast($_) };
-  if ( $result{'query_name'} eq $result{'hit_name'} ) { next; }
+  if ( $result{'query_name'} eq $result{'hit_name'} or $result{'evalue'} > $evalue ) { next; }
   if ( $cluster_id{$result{'query_name'}} ) {
     if ( $cluster_id{$result{'hit_name'}} ) {
       unless ( $cluster_id{$result{'query_name'}} == $cluster_id{$result{'hit_name'}}) { #sequences are part of different clusters (merge)
@@ -84,12 +84,30 @@ while (<>) {
     else { $strand{$result{'hit_name'}} = -1; }
   }
 }
+
+open (my $sum, ">", 'cluster_summary.txt');
+foreach my $cluster ( sort {$a <=> $b} keys %clusters ) {
+  print $sum "Cluster$cluster\t", scalar(@{$clusters{$cluster}}), "\t";
+  print $sum join(",", @{$clusters{$cluster}}), "\n";
+  my $ref_strand;
+  foreach (@{$clusters{$cluster}}) {
+    if ( $_ =~ /EFJ/i or $_ =~ /ADH/i or $_ =~ /jgi/i or $_ =~ /SELMO/i ) { #reference transcripts
+      if ( $ref_strand and $ref_strand != $strand{$_} ) {
+        warn "Cluster $cluster contains reference sequences on opposite strands\n";
+        $ref_strand = 1;
+      }
+      else { $ref_strand = $strand{$_}; }
+    }
+  }
+  if ( $ref_strand and $ref_strand == -1 ) {
+    foreach (@{$clusters{$cluster}}) { $strand{$_} = 0 - $strand{$_}; }
+  }
+}
+close ($sum);
+
+open(my $seq_info, ">", 'cluster_ids.txt');
 foreach ( sort keys %cluster_id ) {
-  print "$_\tCluster", "$cluster_id{$_}\t$strand{$_}\n";
+  print $seq_info "$_\tCluster", "$cluster_id{$_}\t$strand{$_}\n";
 }
 
-#foreach ( sort {$a <=> $b} keys %clusters ) {
-#  print "Cluster$_\t", scalar(@{$clusters{$_}}), "\t";
-#  print join(",", @{$clusters{$_}}), "\n";
-#}
     
