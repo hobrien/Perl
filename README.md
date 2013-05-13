@@ -4,7 +4,13 @@ Perl scripts for genomic analysis:
 
 AddMapMan.pl -Takes the output of MapMan annotation and adds results to a list of gene_IDs 
 
+AlignHomologs.pl -Aligns, trims and makes trees for each cluster from GroupSequences.pl
+
 AllSelaginella.pl -Runs a command on all KRAUS, MOEL, UNC and WILD datasets
+
+CheckMono.py -Determine if Selaginella sequence tree is congruent with species tree
+
+ClusterHomologs.pl -Clusters sequences by blast eValue using single-linkage clustering
 
 CombineCounts.pl, -Combine the output from DESeq for each species, providing counts and significance
 
@@ -24,7 +30,13 @@ GetSeqs.pl -indexes fasta file and retrieves specified sequences
 
 GetSeqsByGeneID.pl - Matches GeneIDs to contig names and outputs seqs matching list of GeneIDs
 
+GroupSeqs.pl -Creates individual fasta files for each cluster identified by ClusterHomologs.pl
+
 NonRef.pl - Creates a file sequences that do not match a list of names
+
+rc.pl -Reverse-complement sequence
+
+RemoveDuplicates.pl -Deletes sequences with duplicate names
 
 ScafTranscritps.pl -Combines contigs that blast to the same reference gene
 
@@ -45,9 +57,9 @@ FileParser.pl -subroutines to read and write GTF and (modified) blast tabular en
 =========================================================================================
 t Folder of test datasets
 
-test.bl - two blast hits with names corresponding to test.fa, opposite strands
+test.bl - seqs 1,2,5 and 6 cluster (1 and 5 are opposite strand of 2 and 6) and 3 and 4 cluster (same strand)
 
-test.fa - two sequences (each 1225bp plus 220 -'s, 26 n's), second is the revcom of the first
+test.fa - two sequences (each 1225bp plus 220 -'s, 26 n's), names correspond to test.bl
 
 test.gtf -gtf with 5 exon features (3 match the same ref gene (2 consecutive), one does not match ref)
 
