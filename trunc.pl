@@ -36,9 +36,6 @@ use Bio::SeqIO;
 
 my $usage = "type perldoc trunc.pl for help";
 
-my $name = 1;
-if ( $ARGV[0] eq "-s" ) { $name = 0; shift; }
-  
 my $seq_start = shift or die $usage;
 my $seq_end = shift;
 
@@ -49,7 +46,7 @@ my $seqin = Bio::SeqIO->new(
 
 my $seqout = Bio::SeqIO->new(
                              -file => "| cat",
-                             -format => 'Fasta',
+                             -format => 'fasta',
                              );
 
 while ( my $seq = $seqin->next_seq ) {
