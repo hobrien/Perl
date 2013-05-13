@@ -27,6 +27,8 @@ This seems to be working well on single sequences or folders of sequences.
 
 =head2 NOTES
 
+This is using a custom phylip parser that doesn't break on longer names now.
+However, it does not conserve gap characters when writing alignments in fasta format which is pretty annoying
 =head1 AUTHOR
 
  Heath E. O'Brien E<lt>heath.obrien-at-gmail-dot-comE<gt>
@@ -53,7 +55,6 @@ my $replace = 0;
 my $seq_num = 0;
 my $remove_gaps = 0;
 my $remove_strains = 0;
-my $concat = 0;
 my $remove_invariant = 0;
 my $abb_name = 0;
 my $remove_ambig = 0;
@@ -71,7 +72,6 @@ GetOptions(
 'outfile:s' => \$outfilename,
 'gap' => \$remove_gaps,
 'strain' => \$remove_strains,
-'concatinate' => \$concat,
 'variable' => \$remove_invariant,
 'abbreviate' => \$abb_name,
 'help|?' => \$help,
@@ -147,6 +147,9 @@ sub ConvertSeqs {
     }
     elsif ( $in_format eq "snp_tbl" ) {
       my $aln = snp2aln($in_name);
+    }
+    elsif ( $in_format eq "phylip" ) {
+      my $aln = ParsePhylip($in_name);
       WriteSeqs($aln);
     }
     #input alignments (separate into individual sequences)
@@ -160,72 +163,41 @@ sub ConvertSeqs {
   }
 #output is an alignment (input must be an alignment or snp table)
   else {
+    my $aln;
     if ( $in_format eq "snp_tbl" ) {
-      my $aln = snp2aln($in_name);
-      my $outfile;
-      if ( $out_format =~ /phy/i and $out_format =~ /ext/i ) {  #extended phylip format
-        open(OUT, ">>$out_name");
-        WritePhylipExt($aln);
-      }
-      else { 
-        $outfile = Bio::AlignIO->new(-file => ">>$out_name",
-                                              '-format' => $out_format);
-        $outfile->write_aln($aln);
-      }
+      $aln = snp2aln($in_name);
     }
-    else {
+    elsif ( $in_format eq "phylip" ) {
+      $aln = ParsePhylip($in_name);
+    }
+    else {   
       my $infile = Bio::AlignIO->new(-format => $in_format, 
                              -file   => $in_name);
-      my $outfile;
-      if ( $out_format =~ /phy/i and $out_format =~ /ext/i ) { open(OUT, ">>$out_name"); } #extended phylip format
-      else {  $outfile = Bio::AlignIO->new(-file => ">>$out_name",
-                                          '-format' => $out_format);}
-      my $cat_aln;
-      while ( my $aln = $infile->next_aln ) {
-        if ($seq_num) {   #skip alignments without the specified number of sequences.
-          my $num = scalar($aln->each_seq);
-          unless ( $num == $seq_num ) { next; }
-        }
+      $aln = $infile->next_aln;
+    }
 #REMOVE GAPS (skipped if remove ambiguous also selected because the latter does both
-        if ( $remove_gaps ) { unless ( $remove_ambig ) {$aln = $aln->remove_gaps; } }
+    if ( $remove_gaps ) { unless ( $remove_ambig ) {$aln = $aln->remove_gaps; } }
 #REMOVE AMBIGUOUS
-        if ( $remove_ambig ) { $aln = RemoveAmbig($aln); }       
-#REMOVE SELECTED STRAINS
-        if ( $remove_strains ) {
-          foreach ( @strains ) {
-            my @seqs = $aln->each_seq_with_id($_);
-            foreach (@seqs) { $aln->remove_seq($_); }
-          }
-        }
+    if ( $remove_ambig ) { $aln = RemoveAmbig($aln); }       
 #REMOVE INVARIANT
-        if ( $remove_invariant ) { $aln = $aln->remove_columns(['match']); }
-#REMOVE ALIGNMENTS WITH NO SEQUENCE
-        unless ( $aln->length ) { next; }
+    if ( $remove_invariant ) { $aln = $aln->remove_columns(['match']); }
 #ABBREVIATE NAMES
-        if ( $abb_name ) { $aln = FixNames($aln); }
+    if ( $abb_name ) { $aln = FixNames($aln); }
 #TRUNCATE
-        if ($trunc_start) { 
-          foreach ( $aln->each_seq ) {
-            $aln->remove_seq($_);
-            my $seq = SeqTrunc($_);
-            $aln->add_seq($seq);    
-          }
-        }
-#CONCATINATE
-        if ( $concat ) { 
-          if ( $cat_aln ) { $cat_aln = cat($cat_aln, $aln); }
-          else { $cat_aln = $aln; }
-        }
-        else {
-         if ( $out_format =~ /phy/i and $out_format =~ /ext/i ) { WritePhylipExt($aln); }
-         else { $outfile->write_aln($aln); }
-        }
-      }
-      if ( $concat ) {
-        if ( $out_format =~ /phy/i and $out_format =~ /ext/i ) { WritePhylipExt($cat_aln); }
-        else { $outfile->write_aln($cat_aln); }
+    if ($trunc_start) { 
+      foreach ( $aln->each_seq ) {
+        $aln->remove_seq($_);
+        my $seq = SeqTrunc($_);
+        $aln->add_seq($seq);    
       }
     }
+    my $outfile;
+    if ( $out_format =~ /phy/i and $out_format =~ /ext/i ) { WritePhylipExt($out_name, $aln); } #extended phylip format
+    else {  
+      $outfile = Bio::AlignIO->new(-file => ">>$out_name",
+                                  '-format' => $out_format);
+      $outfile->write_aln($aln); 
+    }    
   }
 }
 ######################################################################################
@@ -260,16 +232,18 @@ sub GetFormat {
 }
 
 sub WritePhylipExt {
+  my $outfile = shift;
   my $aln = shift;
   my @seqs = $aln->each_seq;
-  print OUT scalar(@seqs), " ", length($seqs[0]->seq), "\n";
+  open(my $out, ">", $outfile);
+  print $out scalar(@seqs), " ", length($seqs[0]->seq), "\n";
   my @name_lengths;
   foreach (@seqs) { push(@name_lengths, length($_->display_id)); }
   my $name_size = max(@name_lengths) + 1;
   if ( $name_size < 10 ) { $name_size = 10; }
   foreach (@seqs) {
-    printf OUT "%-*s",  $name_size, $_->display_id;
-    print OUT $_->seq, "\n";
+    printf $out "%-*s",  $name_size, $_->display_id;
+    print $out $_->seq, "\n";
   }
 }
 
@@ -344,4 +318,24 @@ sub snp2aln {
     $aln->add_seq($seq);
   }
   return $aln;
+}
+
+sub ParsePhylip {
+  my $in_name = shift;
+  my $aln = new Bio::SimpleAlign;
+  open(my $infile, "<",  $in_name);
+  while (<$infile>){
+    if ( $. == 1 ) { next; }
+    chomp;
+    $_ =~ s/(\S+)\s+//;
+    my $id = $1;
+    my $length = 0;
+    foreach( $_ =~ /[a-zA-z]/g ) { $length ++; }
+    my $seq = new Bio::LocatableSeq(-seq => $_,
+                                    -id => $id,
+                                    -start => 1,
+                                    -end => $length);
+    $aln->add_seq($seq);
+  }
+  return($aln);
 }
