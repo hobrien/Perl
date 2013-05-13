@@ -32,19 +32,36 @@ Generates 2 outfiles:
 use warnings;
 use strict;
 use FileParser qw(ParseBlast);
+use List::Util qw(min max);
 
 my $usage = "cat BLASTFILE | ClusterHomologs.pl evalue";
 
 my %clusters; #hash of arrays
 my %cluster_id; #cluster membership for each sequence.
+my %starts; #minimum start position of sequence in blast results
+my %ends; #maximum end position of sequence in blast results
 my %strand;
 my $cluster_num = 0;
 my $evalue = shift;
+unless ( $evalue ) { $evalue = 10; }
+
 while (<>) {
   chomp;
   $_ =~ s/,\s*/\t/g;
   my %result = % {ParseBlast($_) };
   if ( $result{'query_name'} eq $result{'hit_name'} or $result{'evalue'} > $evalue ) { next; }
+  unless ($starts{$result{'query_name'}} and $starts{$result{'query_name'}} < $result{'query_start'} ) { 
+    $starts{$result{'query_name'}} = $result{'query_start'};
+  }
+  unless ($ends{$result{'query_name'}} and $ends{$result{'query_name'}} > $result{'query_end'} ) { 
+    $ends{$result{'query_name'}} = $result{'query_end'};
+  }
+  unless ($starts{$result{'hit_name'}} and $starts{$result{'hit_name'}} < $result{'hit_start'} ) { 
+    $starts{$result{'hit_name'}} = $result{'hit_start'};
+  }
+  unless ($ends{$result{'hit_name'}} and $ends{$result{'hit_name'}} > $result{'hit_end'} ) { 
+    $ends{$result{'hit_name'}} = $result{'hit_end'};
+  }
   if ( $cluster_id{$result{'query_name'}} ) {
     if ( $cluster_id{$result{'hit_name'}} ) {
       unless ( $cluster_id{$result{'query_name'}} == $cluster_id{$result{'hit_name'}}) { #sequences are part of different clusters (merge)
@@ -107,7 +124,8 @@ close ($sum);
 
 open(my $seq_info, ">", 'cluster_ids.txt');
 foreach ( sort keys %cluster_id ) {
-  print $seq_info "$_\tCluster", "$cluster_id{$_}\t$strand{$_}\n";
+  print $seq_info "$_\tCluster", "$cluster_id{$_}\t$strand{$_}\t$starts{$_}\t$ends{$_}\n";
+  #print  "$_\tCluster", "$cluster_id{$_}\t$strand{$_}\t$starts{$_}\t$ends{$_}\n";
 }
 
     
