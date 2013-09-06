@@ -6,7 +6,7 @@ ClusterHomologs.pl version 1, 7 May 2013
 
 =head1 SYNOPSIS
 
-cat BLASTRESULT | ClusterHomologs.pl > OUTFILE
+cat BLASTRESULT | ClusterHomologs.pl evalue > OUTFILE
 
 =head1 DESCRIPTION
 
