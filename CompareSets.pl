@@ -29,7 +29,7 @@ Options:
 use strict;
 use warnings;
 use List::Compare;
-
+use List::MoreUtils qw(uniq);
 
 my @sets;
 my @files; 
@@ -38,15 +38,21 @@ foreach(@ARGV) {
   push(@files, $1);
   open(my $in, "<", $_);
   my @names;
-  while(<$in>){
-    my @fields = split(/\s*\t\s*/, $_);
-    push(@names, $fields[0]);
+  while(<$in>) {
+    my @fields = split(/ *\t */, lc($_));
+    if ( $fields[0] =~ /\S/ ) {push(@names, $fields[0]); }
   }
+  @names = uniq(@names);
   push(@sets, \@names);
 }
+print "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items\n";
 
-if ( @sets == 3 ) {print "ven.plot<-draw.triple.venn(\n"; }
-elsif ( @sets == 4 ) {print "venn.plot <- draw.quad.venn(\n"; }
+if ( @sets == 3 ) {
+  print "ven.plot<-draw.triple.venn(\n";
+}
+elsif ( @sets == 4 ) {
+  print "venn.plot <- draw.quad.venn(\n";
+}
 else { die "This script currently only produces tri- and quar-Venn plots\n"; }
 
 for (my $i = 0; $i < @sets; $i ++) { 
