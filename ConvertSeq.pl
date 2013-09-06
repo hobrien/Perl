@@ -211,6 +211,7 @@ sub GetExtension {
   elsif ( $format eq "clustalw" ) { return ".aln";}
   elsif ( $format eq "genbank" ) { return ".gbk";}
   elsif ( $format eq "nexus" ) { return ".nex";}
+  elsif ( $format eq "stockholm" ) { return ".stk";}
   else {die "file format not recognized!";}
 }
 
