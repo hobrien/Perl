@@ -22,7 +22,7 @@ def main(argv):
 #      elif opt in ("-o", "--ofile"):
 #         outputfile = arg
    species_list = ['UNC', 'MOEL', 'WILD', 'KRAUS', 'REF']
-   print "Tree\tNum_mono\tMax_length\tCongruence",
+   print "Tree\tGenus_mono\tGenus_max_legnth\tNum_mono\tSpecies_max_length\tCongruence",
    for species in species_list:
      print "\t%s_mono\t%s_length" % (species, species),
    print ""  
@@ -53,7 +53,12 @@ def main(argv):
        congruence = 'incongruent'
        if MonoTest(t, '(UNC)|(WILD)') == 0 and MonoTest(t, '(UNC)|(WILD)|(MOEL)') == 0:
          congruence = 'congruent'
-       output = [ inputfile, num_mono, global_max, congruence ] + output
+       genus_mono = 'poly'
+       if MonoTest(t, '(UNC)|(WILD)|(MOEL)|(EFJ)|(jgi)|(ADH)|(KRAUS)') == 0:
+         genus_mono = 'mono'
+       genus_length = MaxLength(t, '(UNC)|(WILD)|(MOEL)|(EFJ)|(jgi)|(ADH)|(KRAUS)')
+       
+       output = [ inputfile, genus_mono, genus_length, num_mono, global_max, congruence] + output
        print '\t'.join(str(x) for x in output)
 
 
