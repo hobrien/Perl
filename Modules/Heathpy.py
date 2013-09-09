@@ -6,6 +6,58 @@ from Bio import AlignIO
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 
+def flatten_GTF(input):
+  feature = input.copy()
+  fields = []
+  try:
+    fields.append(feature['seqname'])
+    del feature['seqname']
+  except KeyError:
+    sys.exit("no seqname tag")
+  try:
+    fields.append(feature['source'])
+    del feature['source']
+  except KeyError:
+    sys.exit("no source tag")
+  try:
+    fields.append(feature['feature'])
+    del feature['feature']
+  except KeyError:
+    sys.exit("no feature tag")
+  try:
+    fields.append(feature['start'])
+    del feature['start']
+  except KeyError:
+    sys.exit("no start tag")
+  try:
+    fields.append(feature['end'])
+    del feature['end']
+  except KeyError:
+    sys.exit("no end tag")
+  try:
+    fields.append(feature['score'])
+    del feature['score']
+  except KeyError:
+    sys.exit("no score tag")
+  try:
+    fields.append(feature['strand'])
+    del feature['strand']
+  except KeyError:
+    sys.exit("no strand tag")
+  try:
+    fields.append(feature['frame'])
+    del feature['frame']
+  except KeyError:
+    sys.exit("no frame tag")
+  attributes = ""
+  keys = feature.keys().sort()
+  for key in sorted(feature, key=feature.get):
+    attributes = attributes + '%s "%s"; ' % (key, feature[key])
+  fields.append(attributes)
+  return fields
+
+
+
 def smart_consensus(aln, threshold = .3, ambiguous = "N", gap = "-",
                   require_multiple = 0, consensus_alpha = "IUPACUnambiguousDNA"): 
     """stolen from biopython but modified to ignore ambiguities (while including gaps)
