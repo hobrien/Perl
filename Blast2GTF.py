@@ -9,6 +9,8 @@ and exon length) and break them up if necessary before doing the expression anal
 import sys  
 import getopt 
 import csv
+from os import path
+import cPickle as pickle
 from Heathpy import flatten_GTF
 
 def main(argv):
@@ -40,6 +42,15 @@ def main(argv):
   'feature': 'CDS',
   'frame': 1
   }
+
+  #make a list of names to ensure that there are no duplicates
+  name_list = {}
+  name_num = 1
+  
+  #read dictionary of cluster membership
+  cluster_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "SeqClusters.p")
+  seq_groups = pickle.load( open( cluster_info, "rb" ) )
+
   with open(gtf_filename, 'wb') as outfile:
     gtf_writer = csv.writer(outfile, delimiter='\t', quotechar='', quoting=csv.QUOTE_NONE)
     with open(blastfilename, 'rU') as infile:
@@ -59,7 +70,16 @@ def main(argv):
         exon['seqname'] = qseqid
         exon['start'] = 1
         exon['end'] = qlen
-        exon['gene_id'] =  sacc #This would be a very useful place to store cluster info
+        if sacc in seq_groups:
+          name = "%s_c%s_0" % (qseqid[0:qseqid.find('comp')], seq_groups[sacc].split("_")[1])
+          while name in name_list:
+            name = name.split("_")[0:-1] + "_" + str(name_num)
+            name_num = name_num + 1
+          name_list[name] = 1
+          name_num = 1
+          exon['gene_id'] = name
+        else:
+          exon['gene_id'] =  sacc
         exon['transcript_id'] =  exon['gene_id'] + '.1'
         if sstart > send:
           exon['strand'] = '+'
@@ -80,6 +100,7 @@ def main(argv):
           cds['start'] = qend
           cds['end'] = qstart
         gtf_writer.writerow(flatten_GTF(cds))  
+        
 
 if __name__ == "__main__":
    main(sys.argv[1:])
