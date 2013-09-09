@@ -5,11 +5,12 @@ MakeConsesus.py 5 Sept 2013
 
 SYNOPSIS
 
-MakeConsensus.py -t <treefile> -a <alignmentfile> -c <consensusfile> -l <logfile>
+MakeConsensus.py -t <treefile> -a <alignmentfile> -s <species> -c <consensusfile> -l <logfile>
 
 Options:
  -t treefile
  -a alignment file (relaxed Phylip format)
+ -s species (KRAUS, UNC, WILD, MOEL)
  -c outfile for consensus sequences (appended)
  -l logfile to record summary of which sequences are represented by the consensus (appended)
 
@@ -26,13 +27,8 @@ have a gap at a position, it is considered a gap in the consensus), but ignores 
 before/after the sequence
 
 Consensus sequences are named after the most common comp number among the included sequences
-(in case of a tie, one is picked arbitrarily). This means that there is a possibility that
-if members of the same comp are found in multiple clusters, there may end up being multiple
-consensus sequences with the same name. This should be uncommon, but is something to watch
-out for.
-
-At the moment, this will only make a consensus if ALL of the sequences fro a species are
-monophyletic. This will have to be improved in the future.
+(in case of a tie, one is picked arbitrarily). If multiple consensus sequences are derived
+from the same comp, numbers are appended to the names (ie comp1_cons, comp1_1_cons, com1_2_cons, etc)
 
 AUTHOR
 
@@ -54,14 +50,15 @@ def main(argv):
    alnmentfile = ''
    consfilename = ''
    logfilename = ''
+   species_name = ''
    try:
-      opts, args = getopt.getopt(argv,"ht:a:c:l:",["tree=","alignment=","consensus=","log="])
+      opts, args = getopt.getopt(argv,"ht:a:c:l:s:",["tree=","alignment=","species=", "consensus=","log="])
    except getopt.GetoptError:
-      print 'MakeConsensus.py -t <treefile> -a <alignmentfile> -c <consensusfile> -l <logfile>'
+      print 'MakeConsensus.py -t <treefile> -a <alignmentfile> -s <species> -c <consensusfile> -l <logfile>'
       sys.exit(2)
    for opt, arg in opts:
       if opt == '-h':
-         print 'MakeConsensus.py -t <treefile> -a <alignmentfile> -c <consensusfile> -l <logfile>'
+         print 'MakeConsensus.py -t <treefile> -a <alignmentfile> -s <species> -c <consensusfile> -l <logfile>'
          sys.exit()
       elif opt in ("-t", "--tree"):
          treefile = arg
@@ -71,7 +68,13 @@ def main(argv):
          consfilename = arg
       elif opt in ("-l", "--log"):
          logfilename = arg
+      elif opt in ("-s", "--species"):
+         species_name = arg
    
+   
+   #make a list of names to ensure that there are no duplicates
+   name_list = {}
+   name_num = 1
    
    #read in tree and root by midpoint
    t = Tree(treefile)
@@ -86,94 +89,74 @@ def main(argv):
      aln_index[seq.id] = seq_num
      seq_num = seq_num +1
    
-   #loop through list of species andprint consensus if seqs are monophyletic
-   species_list = ['UNC', 'MOEL', 'WILD', 'KRAUS'] #, 'REF']
-   for species in species_list:
-     leaves = GetLeaves(t, species)
-     if len(leaves) > 1 and MonoTest(t, species) == 0:
-       
-       #make list of sequences from species
-       species_seqs = []
-       for leaf in leaves:
-         if 'kraussiana' not in leaf.name:  #exclude reference sequence from consensus
-           species_seqs.append(aln[aln_index[leaf.name]])
-
-       #create consensus sequence from sequence list
+   #Add "species" feature to leaves on tree for easy lookup
+   t = add_species(t)
+   
+   #cycle through monophyletic groups and build consensus sequences
+   for node in t.get_monophyletic(values=[species_name], target_attr="species"):
+     species_seqs = []
+     for leaf in node:
+       if 'kraussiana' not in leaf.name:                   #exclude reference sequence from consensus
+         species_seqs.append(aln[aln_index[leaf.name]])
+     if len(species_seqs) > 1:                             #create consensus sequence from sequence list
        species_aln = MultipleSeqAlignment(species_seqs)
        consensus = smart_consensus(MultipleSeqAlignment(pad_ends(species_aln))) #use pad_ends to convert end gaps to ambiguous
-       consensus = pad_ends([consensus], '-', 'N')[0]  #convert back to gap characters (need to convert seq to a list)
-       name = pick_name(leaves) + "_cons"
+       consensus = pad_ends([consensus], '-', 'N')[0]      #convert back to gap characters (need to convert seq to a list)
+       name = pick_name(species_seqs) + "_cons"
+       while name in name_list:
+         name = name.split("_")[0] + "_" + str(name_num) + "_cons"
+         name_num = name_num + 1
+       name_list[name] = 1
+       name_num = 1
        consensus =  SeqRecord(Seq(str(consensus).replace('-','')),
                               id=name, 
                               description=name)
-                              
-       #write consensus sequence to consensus file
-       consfile = open(consfilename, "a")
-       consfile.write(consensus.format("fasta"))
-       consfile.close()
+     else:                                                #for singletons, just write ungapped version of original
+       consensus = species_seqs[0]
+       consensus.seq = consensus.seq.ungap("-")                    
+       name = consensus.id
        
-       #Remove individual sequences from the cluster and add consensus
-       seqfilename = alnfile.split(".")[0] + ".fa"
-       system("RemoveSeqs.py -s %s -g %s" % (seqfilename, species))
-       seqfile = open(seqfilename, "a")
-       seqfile.write(consensus.format("fasta"))
-       seqfile.close()
+     #write consensus sequence to consensus file
+     consfile = open(consfilename, "a")
+     consfile.write(consensus.format("fasta"))
+     consfile.close()
        
-       #write summary of seqs represented by cons to log file
-       cluster_num = path.split(alnfile)[1].split(".")[0] #get cluster number
-       logfile = open(logfilename, "a")
-       for seq in species_seqs:
-         logfile.write("%s\n" % ", ".join([seq.id, name, cluster_num]))
-       logfile.close()
- 
-def pick_name(leaves):
+     #Remove individual sequences from the cluster and add consensus
+     seqfilename = alnfile.split(".")[0] + ".fa"
+     system("RemoveSeqs.py -s %s -g %s" % (seqfilename, species_name))
+     seqfile = open(seqfilename, "a")
+     seqfile.write(consensus.format("fasta"))
+     seqfile.close()
+       
+     #write summary of seqs represented by cons to log file
+     cluster_num = path.split(alnfile)[1].split(".")[0] #get cluster number
+     logfile = open(logfilename, "a")
+     for seq in species_seqs:
+       logfile.write("%s\n" % ", ".join([seq.id, name, cluster_num]))
+     logfile.close()
+
+def add_species(tree): 
+   species_list = ['UNC', 'MOEL', 'WILD', 'KRAUS']
+   for leaf in tree:
+     to_add = "other"
+     for species in species_list:
+       if species in leaf.name:
+         to_add = species
+     if "kraussiana" in leaf.name:       #Include reference sequences from 1kp project
+       to_add = "KRAUS"
+     leaf.add_features(species=to_add)
+   return tree
+   
+def pick_name(seqs):
   names = {}
-  for leaf in leaves:
-    name = leaf.name.split("_")[0]
+  for seq in seqs:
+    name = seq.id.split("_")[0]
     if name in names:
       names[name] = names[name] + 1
     else:
       names[name] = 1
-    return max_key(names)[0]   #max_key returns list of dictionary entries died for the max value
+  return max_key(names)[0]   #max_key returns list of dictionary entries tied for the max value
       
-def GetLeaves(tree, name):
-  nodes = []
-  if name == 'REF':
-    name = ('EFJ','jgi','ADH')
-  elif name == 'KRAUS':
-    name = ('KRAUS','kraussiana')   #Include ref seq in monotest
-  else:
-    name = (name)
-  for leaf in tree:
-    if any(substring in leaf.name for substring in name):
-      nodes.append(leaf)
-  return nodes
-  
-def MonoTest(tree, name):
-  nodes = GetLeaves(tree, name)
-  ancestor = tree.get_common_ancestor(nodes)
-  return len(ancestor) - len(nodes)
-
-def MaxLength(tree, name):
-  nodes = GetLeaves(tree, name)
-  max_length = 0
-  for x in range(len(nodes) - 1):
-    for y in range(x+1, len(nodes)):
-      dist = tree.get_distance(nodes[x], nodes[y])
-      if dist > max_length:
-        max_length = dist
-      y = y + 1
-  return max_length
-
-def GetSisters(node):
-  clusters = []
-  for c in node.get_children():
-    taxa = []
-    for l in c.get_leaf_names():
-      taxa.append(l)
-    clusters.append(taxa)
-  return clusters
-  
 
 if __name__ == "__main__":
    main(sys.argv[1:])
