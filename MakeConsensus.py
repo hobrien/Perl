@@ -39,6 +39,7 @@ import sys
 import getopt 
 from os import path, system
 from ete2 import Tree  
+import cPickle as pickle
 from Bio import SeqIO, AlignIO
 from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
@@ -72,8 +73,13 @@ def main(argv):
          species_name = arg
    
    
-   #make a list of names to ensure that there are no duplicates
-   name_list = {}
+   #make a list of names to ensure that there are no duplicates.
+   #if saved list exists, use it instead
+   namefile = "names.p"
+   if path.exists(namefile):
+     name_list = pickle.load( open( namefile, "rb" ) )
+   else:
+     name_list = {}
    name_num = 1
    
    #read in tree and root by midpoint
@@ -134,6 +140,9 @@ def main(argv):
      for seq in species_seqs:
        logfile.write("%s\n" % ", ".join([seq.id, name, cluster_num]))
      logfile.close()
+
+   #save list of names for future uses of script
+   pickle.dump( name_list, open( namefile, "wb" ) )
 
 def add_species(tree): 
    species_list = ['UNC', 'MOEL', 'WILD', 'KRAUS']
