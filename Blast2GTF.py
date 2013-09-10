@@ -73,7 +73,8 @@ def main(argv):
         if sacc in seq_groups:
           name = "%s_c%s_0" % (qseqid[0:qseqid.find('comp')], seq_groups[sacc].split("_")[1])
           while name in name_list:
-            name = name.split("_")[0:-1] + "_" + str(name_num)
+            name = name.split("_")[0:-1] + [str(name_num)]
+            name = "_".join(name)
             name_num = name_num + 1
           name_list[name] = 1
           name_num = 1
@@ -81,7 +82,7 @@ def main(argv):
         else:
           exon['gene_id'] =  sacc
         exon['transcript_id'] =  exon['gene_id'] + '.1'
-        if sstart > send:
+        if sstart < send:
           exon['strand'] = '+'
         else:
           exon['strand'] = '-'
