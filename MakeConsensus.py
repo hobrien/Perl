@@ -129,13 +129,6 @@ def main(argv):
      consfile.write(consensus.format("fasta"))
      consfile.close()
        
-     #Remove individual sequences from the cluster and add consensus
-     seqfilename = alnfile.split(".")[0] + ".fa"
-     system("RemoveSeqs.py -s %s -g %s" % (seqfilename, species_name))
-     seqfile = open(seqfilename, "a")
-     seqfile.write(consensus.format("fasta"))
-     seqfile.close()
-       
      #write summary of seqs represented by cons to log file
      cluster_num = path.split(alnfile)[1].split(".")[0] #get cluster number
      logfile = open(logfilename, "a")
