@@ -28,7 +28,9 @@ before/after the sequence
 
 Consensus sequences are named after the most common comp number among the included sequences
 (in case of a tie, one is picked arbitrarily). If multiple consensus sequences are derived
-from the same comp, numbers are appended to the names (ie comp1_cons, comp1_1_cons, com1_2_cons, etc)
+from the same comp, numbers are appended to the names (ie comp1_cons, comp1_1_cons, 
+com1_2_cons, etc). This works across multiple runs of the script, as long as they are
+launched from the same folder
 
 AUTHOR
 
