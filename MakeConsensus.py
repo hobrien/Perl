@@ -119,11 +119,13 @@ def main(argv):
        consensus =  SeqRecord(Seq(str(consensus).replace('-','')),
                               id=name, 
                               description=name)
-     else:                                                #for singletons, just write ungapped version of original
+     elif len(species_seqs) == 1:                                                #for singletons, just write ungapped version of original
        consensus = species_seqs[0]
        consensus.seq = consensus.seq.ungap("-")                    
        name = consensus.id
-       
+     
+     else:
+       continue
      #write consensus sequence to consensus file
      consfile = open(consfilename, "a")
      consfile.write(consensus.format("fasta"))
