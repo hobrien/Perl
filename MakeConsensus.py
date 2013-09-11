@@ -32,6 +32,9 @@ from the same comp, numbers are appended to the names (ie comp1_cons, comp1_1_co
 com1_2_cons, etc). This works across multiple runs of the script, as long as they are
 launched from the same folder
 
+There were still 8 duplicate names when I ran this on the KRAUS Trinity data. This is a
+total mystery to me
+
 AUTHOR
 
  Heath E. O'Brien (heath.obrien-at-gmail-dot-com)
