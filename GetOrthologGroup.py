@@ -1,5 +1,6 @@
 #!/opt/local/bin/python
-
+"""Use blast results to add sequences to ortholog groups
+"""
 import sys, getopt
 import cPickle as pickle
 from os import listdir, path, system
@@ -23,6 +24,8 @@ def main(argv):
        blastfilename = arg
     elif opt in ("-s", "--seqfile"):
        seqfilename = arg
+       
+       
   species = path.split(seqfilename)[1].split("_")[0]
   print species
   cluster_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "SeqClusters.p")
