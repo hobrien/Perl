@@ -10,6 +10,7 @@ import glob
 import sys, getopt
 from os import path, system
 
+
 def main(argv):
   command = ''
   searchterm = '' #limit to files that match search term
@@ -33,7 +34,7 @@ def main(argv):
     elif opt in ("-p", "--processor"):
        max_task = arg
 
-  commands = []
+  commands = [max_task]
   for file in glob.glob(path.join(folder, '*')):
     if searchterm == "" or searchterm in file: 
       commands.append(command.replace('*',file).split(" "))
@@ -66,6 +67,7 @@ def exec_commands(cmds):
     ''' Exec commands in parallel in multiple process 
     (as much as we have CPU)
     '''
+    max_task = int(cmds.pop(0))
     if not cmds: return # empty list
 
     def done(p):
@@ -77,7 +79,7 @@ def exec_commands(cmds):
 
     processor_num = cpu_count()
     if max_task > processor_num:
-      sys.exit("maximum number of processors is %" % processor_num)
+      sys.exit("maximum number of processors is %i" % processor_num)
     processes = []
     while True:
         while cmds and len(processes) < max_task:
