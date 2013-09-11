@@ -57,9 +57,21 @@ def main(argv):
       reader=csv.reader(infile,delimiter='\t')
       for row in reader:
         qseqid, qlen, sacc, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore = row
-        if pident < 70: #skip low-similarity hits
-          continue
-
+        qlen = int(qlen)
+        slen = int(slen)
+        pident = float(pident)
+        length = int(length)
+        mismatch = int(mismatch)
+        gapopen = int(gapopen)
+        qstart = int(qstart)
+        qend = int(qend)
+        qframe =int(qframe)
+        sstart = int(sstart)
+        send = int(send)
+        sframe = int(sframe)
+        evalue = float(evalue)
+        bitscore = float(bitscore)
+                 
         #skip secondary hits from same query
         if qseqid == previous_query: #skip secondary hits
           continue 
@@ -82,12 +94,11 @@ def main(argv):
         else:
           exon['gene_id'] =  sacc
         exon['transcript_id'] =  exon['gene_id'] + '.1'
-        if sstart < send:
+        if sstart < send and qstart < qend:                 #I'm assuming there's no reason why both would be reversed
           exon['strand'] = '+'
         else:
           exon['strand'] = '-'
         gtf_writer.writerow(flatten_GTF(exon))
-  
         #get info for cds feature
         cds['seqname'] = exon['seqname']
         cds['score'] =  bitscore
