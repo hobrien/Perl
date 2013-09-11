@@ -84,15 +84,15 @@ def main(argv):
         exon['end'] = qlen
         if sacc in seq_groups:
           name = "%s_c%s_0" % (qseqid[0:qseqid.find('comp')], seq_groups[sacc].split("_")[1])
-          while name in name_list:
-            name = name.split("_")[0:-1] + [str(name_num)]
-            name = "_".join(name)
-            name_num = name_num + 1
-          name_list[name] = 1
-          name_num = 1
-          exon['gene_id'] = name
         else:
-          exon['gene_id'] =  sacc
+          name =  sacc + "_0"                       
+        while name in name_list:
+          name = name.split("_")[0:-1] + [str(name_num)]
+          name = "_".join(name)
+          name_num = name_num + 1
+        name_list[name] = 1
+        name_num = 1
+        exon['gene_id'] = name
         exon['transcript_id'] =  exon['gene_id'] + '.1'
         if sstart < send and qstart < qend:                 #I'm assuming there's no reason why both would be reversed
           exon['strand'] = '+'
