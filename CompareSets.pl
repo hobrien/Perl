@@ -6,7 +6,7 @@ CompareSets.pl version 1, 24 June 2012
 
 =head1 SYNOPSIS
 
-CompareSets.pl file1 file2 file3 [file4] 
+CompareSets.pl file1 file2 [file3 file4] 
 
 =head1 DESCRIPTION
 
@@ -30,24 +30,32 @@ use strict;
 use warnings;
 use List::Compare;
 use List::MoreUtils qw(uniq);
+use File::Basename;
 
 my @sets;
 my @files; 
 foreach(@ARGV) {
-  $_ =~ /(\w+)/;
-  push(@files, $1);
+  #$_ =~ /(\w+)/;
+  (my $name, my $path, my $in_ext) = fileparse($_, qr/\.[^.]*/);
+  push(@files, $name);
   open(my $in, "<", $_);
   my @names;
   while(<$in>) {
     my @fields = split(/ *\t */, lc($_));
-    if ( $fields[0] =~ /\S/ ) {push(@names, $fields[0]); }
+    if ( $fields[0] =~ /\S/ ) {
+      $fields[0] =~ s/^\s+//;     #strip out leading whitespace
+      $fields[0] =~ s/\s+$//;     #strip out leading whitespace      
+      push(@names, $fields[0]); }
   }
   @names = uniq(@names);
   push(@sets, \@names);
 }
 print "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items\n";
 
-if ( @sets == 3 ) {
+if ( @sets == 2 ) {
+  print "ven.plot<-draw.pairwise.venn(\n";
+}
+elsif ( @sets == 3 ) {
   print "ven.plot<-draw.triple.venn(\n";
 }
 elsif ( @sets == 4 ) {
@@ -62,7 +70,12 @@ for (my $i = 0; $i < @sets; $i ++) {
 for (my $i = 0; $i < @sets - 1; $i ++) {
   for (my $j = $i + 1; $j < @sets; $j ++ ) {
     my $lc= List::Compare->new($sets[$i], $sets[$j]);
-    print "  n", $i+1, $j+1, " = ", scalar($lc->get_intersection), ",\n";
+    if ( @sets == 2 ) {     
+      print "  cross.area = ", scalar($lc->get_intersection), ",\n";
+    }
+    else {
+      print "  n", $i+1, $j+1, " = ", scalar($lc->get_intersection), ",\n";
+    }
   }
 }
 
@@ -86,7 +99,11 @@ for (my $i = 0; $i < @sets - 3; $i ++) {
   }
 }
 print "  category = c('", join("','", @files), "'),\n";
-if ( @sets == 3 ) {
+if ( @sets == 2) {
+  print "  fill = c('blue', 'red'),
+  cat.col = c('blue', 'red'),\n";
+}  
+elsif ( @sets == 3 ) {
   print "  fill = c('blue', 'red', 'green'),
   cat.col = c('blue', 'red', 'green'),\n";
 }
