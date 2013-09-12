@@ -31,7 +31,6 @@ def main(argv):
   for SeqRec in GFF.parse(gtf_filehandle, base_dict=seq_dict): 
     if not SeqRec.features:
       continue                                                  #Skip sequences that are not in the GFF
-    print SeqRec.id
     #cluster_num = SeqRec.features[0]
     cluster_num = SeqRec.features[0].id.split('_')[1]
     if not cluster_num[0] =='c':                               #Skip sequences that match reference sequences that are not part of a cluster
