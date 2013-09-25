@@ -64,6 +64,8 @@ def smart_consensus(aln, threshold = .3, ambiguous = "N", gap = "-",
        this is useful in cases where sequences vary in length rather than in actual bases
     
        gap can be set to "" to produce a continuous sequence which will not match the original alignment
+       
+       this is failing in cases where all sequences have gaps at a position. 
     """
     consensus = '' 
 
@@ -100,8 +102,9 @@ def smart_consensus(aln, threshold = .3, ambiguous = "N", gap = "-",
                     max_atoms = [atom]
                 elif gap not in max_atoms:
                     max_atoms.append(atom) 
-
-        if require_multiple and num_atoms == 1: 
+        if num_atoms == 0:                    #if all sequences have an N at a position (indicates that all sequences start or stop before/after this position)
+            consensus += gap
+        elif require_multiple and num_atoms == 1: 
             consensus += ambiguous 
         elif (len(max_atoms) == 1) and ((float(max_size)/float(num_atoms)) 
                                      >= threshold): 
