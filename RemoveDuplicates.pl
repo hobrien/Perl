@@ -34,17 +34,24 @@ my $infilename = shift;
 unless ($infilename ) { $infilename = "cat |";  }
 
 my $outfilename = shift;
-unless ($outfilename ) { $outfilename = "| cat";  }
+my $outfile;
+if ($outfilename ) { 
+  $outfile = Bio::SeqIO->new('-file' => ">$outfilename",
+         '-format' => 'fasta') or die "could not open seq file $outfilename\n";
+}
+else {
+  $outfilename = "| cat";  
+  $outfile = Bio::SeqIO->new('-file' => $outfilename,
+         '-format' => 'genbank') or die "could not open seq file $outfilename\n";
+}
 
 my $infile = Bio::SeqIO->new('-file' => $infilename,
-         '-format' => 'genbank') or die "could not open seq file $infilename\n";
+         '-format' => 'fasta') or die "could not open seq file $infilename\n";
 my %seqs;	
 while (my $seq = $infile->next_seq) {
   $seqs{$seq->display_id} = $seq;
 }
-
-my $outfile = Bio::SeqIO->new('-file' => $outfilename,
-         '-format' => 'genbank') or die "could not open seq file $outfilename\n";
+ 
 
 foreach (keys %seqs) {
   $outfile->write_seq($seqs{$_});
