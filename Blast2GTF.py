@@ -39,7 +39,7 @@ def main(argv):
 
   previous_query = 'init'
   cds = {
-  'source': 'Ensembl',
+  'source': '1kp',
   'feature': 'CDS',
   'frame': 1
   }
