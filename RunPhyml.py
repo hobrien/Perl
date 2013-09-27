@@ -12,7 +12,10 @@ def main(argv):
   if not path.exists(phylip) or os.path.getmtime(fasta) > os.path.getmtime(phylip):
     system("mafft --quiet %s |ConvertAln.pl -x fasta -f phyext -o %s -r" % (fasta, phylip))
   if not path.exists(tree) or os.path.getmtime(fasta) > os.path.getmtime(tree):
-    system("phyml --quiet --no_memory_check -i %s" % phylip)
+    if argv[1] == 'fast':
+      system("phyml --quiet --no_memory_check -o n -b 0 -i %s" % phylip)
+    else:
+      system("phyml --quiet --no_memory_check -i %s" % phylip)
     system("mv %s %s" % (phyml_tree, tree))
     system("rm %s" % phyml_stats)
 
