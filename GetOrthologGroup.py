@@ -11,14 +11,15 @@ def main(argv):
   gtf_filename = ''
   seqfilename = ''
   feature = 'cds'
+  seqtype = ''
   try:
-      opts, args = getopt.getopt(argv,"hg:s:f:",["seqfile=","blastfile=", "feature="])
+      opts, args = getopt.getopt(argv,"hg:s:f:t:",["seqfile=","blastfile=", "feature=", "seqtype="])
   except getopt.GetoptError:
     print 'Type GetOrthologGroups.py -h for options'
     sys.exit(2)
   for opt, arg in opts:
     if opt == "-h":
-       print 'GetOrthologGroups.py -g <gtf_file> -s <seqfile> -f <feature>'
+       print 'GetOrthologGroups.py -g <gtf_file> -s <seqfile> -f <feature> -t <seqtype>'
        sys.exit()
     elif opt in ("-g", "--gtffile"):
        gtf_filename = arg
@@ -26,7 +27,10 @@ def main(argv):
        seqfilename = arg
     elif opt in ("-f", "--feature"):
        feature = arg
-       
+    elif opt in ("-ft", "--seqtype"):
+       seqtype = arg
+  unless seqtype == "contigs" or seqtype == "consensus":
+    sys.exit("seqtype must be either 'contigs' or 'consensus')     
   seqfilehandle = open(seqfilename)
   seq_dict = SeqIO.to_dict(SeqIO.parse(seqfilehandle, "fasta"))
   seqfilehandle.close()
@@ -39,7 +43,10 @@ def main(argv):
     if not cluster_num[0] =='c':                               #Skip sequences that match reference sequences that are not part of a cluster
       continue
     cluster_num = cluster_num[1:]
-    cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "Homolog_groups", "Cluster_" + cluster_num + ".fa")  
+    if seqtype == "contigs":
+      cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "ContigClusters", "Cluster_" + cluster_num + ".fa")
+    elif seqtype == "consensus":
+      cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "ConsensusCLusters", "Cluster_" + cluster_num + ".fa")     
     if feature == 'cds':
       subseq = SeqRec.features[0].sub_features[1].extract(SeqRec)
     elif feature == 'contig':
