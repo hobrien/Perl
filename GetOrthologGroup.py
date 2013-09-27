@@ -10,19 +10,22 @@ from StringIO import StringIO
 def main(argv):
   gtf_filename = ''
   seqfilename = ''
+  feature = 'cds'
   try:
-      opts, args = getopt.getopt(argv,"hg:s:",["seqfile=","blastfile="])
+      opts, args = getopt.getopt(argv,"hg:s:f:",["seqfile=","blastfile=", "feature="])
   except getopt.GetoptError:
     print 'Type GetOrthologGroups.py -h for options'
     sys.exit(2)
   for opt, arg in opts:
     if opt == "-h":
-       print 'GetOrthologGroups.py -g <gtf_file> -s <seqfile>'
+       print 'GetOrthologGroups.py -g <gtf_file> -s <seqfile> -f <feature>'
        sys.exit()
     elif opt in ("-g", "--gtffile"):
        gtf_filename = arg
     elif opt in ("-s", "--seqfile"):
        seqfilename = arg
+    elif opt in ("-f", "--feature"):
+       feature = arg
        
   seqfilehandle = open(seqfilename)
   seq_dict = SeqIO.to_dict(SeqIO.parse(seqfilehandle, "fasta"))
@@ -37,7 +40,16 @@ def main(argv):
       continue
     cluster_num = cluster_num[1:]
     cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "Homolog_groups", "Cluster_" + cluster_num + ".fa")  
-    subseq = SeqRec.features[0].sub_features[1].extract(SeqRec)
+    if feature == 'cds':
+      subseq = SeqRec.features[0].sub_features[1].extract(SeqRec)
+    elif feature == 'contig':
+      if SeqRec.features[0].sub_features[1].location.strand == -1:
+        subseq = SeqRec.seq.reverse_complement()
+      else:
+        subseq = SeqRec.seq 
+    else:
+      sys.exit("feature %s not recognized" % feature)
+      
     if SeqRec.features[0].sub_features[1].location.strand == -1:
       subseq.id = SeqRec.id + '_rc'
       subseq.description = subseq.id
