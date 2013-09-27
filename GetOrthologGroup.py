@@ -1,58 +1,70 @@
 #!/opt/local/bin/python
-"""Use blast results to add sequences to ortholog groups
+"""Use GTF file to add sequences to ortholog groups
 """
 import sys, getopt
-import cPickle as pickle
 from os import listdir, path, system
 from Bio import SeqIO
+from BCBio import GFF
 from StringIO import StringIO
-import csv
 
 def main(argv):
-  blastfilename = ''
+  gtf_filename = ''
   seqfilename = ''
+  feature = 'cds'
+  seqtype = ''
   try:
-      opts, args = getopt.getopt(argv,"hb:s:",["seqfile=","blastfile="])
+      opts, args = getopt.getopt(argv,"hg:s:f:t:",["seqfile=","blastfile=", "feature=", "seqtype="])
   except getopt.GetoptError:
     print 'Type GetOrthologGroups.py -h for options'
     sys.exit(2)
   for opt, arg in opts:
     if opt == "-h":
-       print 'GetOrthologGroups.py -b <blastfile> -s <seqfile>'
+       print 'GetOrthologGroups.py -g <gtf_file> -s <seqfile> -f <feature> -t <seqtype>'
        sys.exit()
-    elif opt in ("-b", "--blastfile"):
-       blastfilename = arg
+    elif opt in ("-g", "--gtffile"):
+       gtf_filename = arg
     elif opt in ("-s", "--seqfile"):
        seqfilename = arg
-       
-       
-  species = path.split(seqfilename)[1].split("_")[0]
-  print species
-  cluster_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "SeqClusters.p")
-  seq_groups = pickle.load( open( cluster_info, "rb" ) )
-  indexfilename = ".".join(seqfilename.split(".")[:-1] + ["inx"])
-  new_seqs = SeqIO.index_db(indexfilename, seqfilename, "fasta")
-  used_seqs = {}
-  with open(blastfilename, 'rU') as f:
-    reader=csv.reader(f,delimiter='\t')
-    for row in reader:
-      qseqid, qlen, sacc, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore = row
-      if not used_seqs.has_key(qseqid):
-        used_seqs[qseqid] = 1
-        seq = new_seqs[qseqid]  
-        #cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", seq_groups[sacc] + ".fa")      
-        cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "Homolog_groups", seq_groups[sacc] + ".fa")      
-        cluster_file = open(cluster_filename, "a")
-        #print "saving %s to %s" % (qseqid, cluster_filename)
-        id = species + seq.id
-        if int(send) < int(sstart):
-          seq = seq.reverse_complement()
-          id = id + '_rc'
-        seq.id, seq.description = id, id
-        cluster_file.write(seq.format("fasta"))
-        cluster_file.close()
-
-
+    elif opt in ("-f", "--feature"):
+       feature = arg
+    elif opt in ("-ft", "--seqtype"):
+       seqtype = arg
+  unless seqtype == "contigs" or seqtype == "consensus":
+    sys.exit("seqtype must be either 'contigs' or 'consensus')     
+  seqfilehandle = open(seqfilename)
+  seq_dict = SeqIO.to_dict(SeqIO.parse(seqfilehandle, "fasta"))
+  seqfilehandle.close()
+  gtf_filehandle = open(gtf_filename)
+  for SeqRec in GFF.parse(gtf_filehandle, base_dict=seq_dict): 
+    if not SeqRec.features:
+      continue                                                  #Skip sequences that are not in the GFF
+    #cluster_num = SeqRec.features[0]
+    cluster_num = SeqRec.features[0].id.split('_')[1]
+    if not cluster_num[0] =='c':                               #Skip sequences that match reference sequences that are not part of a cluster
+      continue
+    cluster_num = cluster_num[1:]
+    if seqtype == "contigs":
+      cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "ContigClusters", "Cluster_" + cluster_num + ".fa")
+    elif seqtype == "consensus":
+      cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "ConsensusCLusters", "Cluster_" + cluster_num + ".fa")     
+    if feature == 'cds':
+      subseq = SeqRec.features[0].sub_features[1].extract(SeqRec)
+    elif feature == 'contig':
+      if SeqRec.features[0].sub_features[1].location.strand == -1:
+        subseq = SeqRec.seq.reverse_complement()
+      else:
+        subseq = SeqRec.seq 
+    else:
+      sys.exit("feature %s not recognized" % feature)
+      
+    if SeqRec.features[0].sub_features[1].location.strand == -1:
+      subseq.id = SeqRec.id + '_rc'
+      subseq.description = subseq.id
+    cluster_file = open(cluster_filename, "a")
+    cluster_file.write(subseq.format("fasta"))
+    cluster_file.close()
+  gtf_filehandle.close()
+  
 if __name__ == "__main__":
    main(sys.argv[1:])
 
