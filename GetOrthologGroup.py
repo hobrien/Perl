@@ -27,10 +27,10 @@ def main(argv):
        seqfilename = arg
     elif opt in ("-f", "--feature"):
        feature = arg
-    elif opt in ("-ft", "--seqtype"):
+    elif opt in ("-t", "--seqtype"):
        seqtype = arg
-  unless seqtype == "contigs" or seqtype == "consensus":
-    sys.exit("seqtype must be either 'contigs' or 'consensus')     
+  if seqtype != "contigs" or seqtype == "consensus":
+    sys.exit("seqtype must be either 'contigs' or 'consensus'")     
   seqfilehandle = open(seqfilename)
   seq_dict = SeqIO.to_dict(SeqIO.parse(seqfilehandle, "fasta"))
   seqfilehandle.close()
@@ -49,7 +49,7 @@ def main(argv):
       cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "ConsensusCLusters", "Cluster_" + cluster_num + ".fa")     
     if feature == 'cds':
       subseq = SeqRec.features[0].sub_features[1].extract(SeqRec)
-    elif feature == 'contig':
+    elif feature == 'contigs':
       if SeqRec.features[0].sub_features[1].location.strand == -1:
         subseq = SeqRec.seq.reverse_complement()
       else:
