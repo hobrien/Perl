@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/local/bin/python
 
 """take all files in specified folder that match the search criteria and replace asterisks
 in the command with the filenames and execute it on the specified number of processors 

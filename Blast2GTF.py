@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/local/bin/python
 
 """This is being rewritten to make a single cds feature the length of the top blast hit. 
 Chimeric transcripts are going to be a big problem for this approach, but I can check for 

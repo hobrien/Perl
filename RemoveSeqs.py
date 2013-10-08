@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/local/bin/python
 
 import sys, getopt
 from os import listdir, path, system

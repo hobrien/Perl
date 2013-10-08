@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/local/bin/python
 """Use GTF file to add sequences to ortholog groups
 """
 import sys, getopt

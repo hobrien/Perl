@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/local/bin/python
 """
 
 GetClades.py 12 Sept 2013

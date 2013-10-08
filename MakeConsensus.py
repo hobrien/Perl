@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/local/bin/python
 """
 
 MakeConsesus.py 5 Sept 2013
