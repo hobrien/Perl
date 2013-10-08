@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/local/bin/python
 
 import sys
 from os import system, path
@@ -11,7 +11,7 @@ def main(argv):
   tree = fasta.replace('.fa', '.nwk')
   if not path.exists(phylip) or path.getmtime(fasta) > path.getmtime(phylip):
     system("mafft --quiet %s |ConvertAln.pl -x fasta -f phyext -o %s -r" % (fasta, phylip))
-  if not path.exists(tree) or os.path.getmtime(fasta) > os.path.getmtime(tree):
+  if not path.exists(tree) or path.getmtime(fasta) > path.getmtime(tree):
     if argv[1] == 'fast':
       system("phyml --quiet --no_memory_check -o n -b 0 -i %s" % phylip)
     else:
