@@ -68,7 +68,7 @@ system("Blast2OrthologGroup.py -b %s -s %s" % (blast_all, raw_assembly)) #Add se
 #build trees for each ortholog group.
 log.write("\n%s, Build trees for each ortholog group:\n" % time.asctime(time.localtime()))
 
-#log.write("ParallelBatch.py -f %s -g .fa -c 'RunPhyml.py * fast'\n" % contig_folder)
+log.write("ParallelBatch.py -f %s -g .fa -c 'RunPhyml.py * fast'\n" % contig_folder)
 system("ParallelBatch.py -f %s -g .fa -c 'RunPhyml.py * fast'" % contig_folder)
 
 #Make consensus sequences
