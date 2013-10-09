@@ -107,7 +107,7 @@ def main(argv):
    for node in t.get_monophyletic(values=[species_name], target_attr="species"):
      species_seqs = []
      for leaf in node:
-       if 'kraussiana' not in leaf.name:                   #exclude reference sequence from consensus
+       if 'kraussiana' not in leaf.name and 'willdenowii' not in leaf.name:  #exclude reference sequence from consensus
          species_seqs.append(aln[aln_index[leaf.name]])
      if len(species_seqs) > 1:                             #create consensus sequence from sequence list
        species_aln = MultipleSeqAlignment(species_seqs)
@@ -153,6 +153,8 @@ def add_species(tree):
          to_add = species
      if "kraussiana" in leaf.name:       #Include reference sequences from 1kp project
        to_add = "KRAUS"
+     elif :willdenowii" in leaf.name:
+       to_add = "WILD"
      leaf.add_features(species=to_add)
    return tree
    
