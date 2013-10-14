@@ -8,6 +8,8 @@ AlignHomologs.pl -Aligns, trims and makes trees for each cluster from GroupSeque
 
 AllSelaginella.pl -Runs a command on all KRAUS, MOEL, UNC and WILD datasets
 
+Blast2GTF -Convert homology info about the top blast hit of each sequence to GTF features
+
 CheckMono.py -Determine if Selaginella sequence tree is congruent with species tree
 
 ClusterHomologs.pl -Clusters sequences by blast eValue using single-linkage clustering
@@ -26,19 +28,33 @@ ExtractEntrez.pl -Search for genbank accession numbers and generat a entrez quer
 
 FilterSeq.pl -filtering sequences on min and/or max length
 
-GetSeqs.pl -indexes fasta file and retrieves specified sequences
+FixTranscripts.pl -modifies GTF files to group exons from the same gene and indicate paralogs
+
+GetOrthologGroup.py -Use blast results to add sequences to ortholog groups
+
+GetSeq.pl -indexes fasta file and retrieves specified sequences
 
 GetSeqsByGeneID.pl - Matches GeneIDs to contig names and outputs seqs matching list of GeneIDs
 
 GroupSeqs.pl -Creates individual fasta files for each cluster identified by ClusterHomologs.pl
 
+MakeConsensus.py -Creates consensus sequence from all sequences that group together from the specified species
+
 NonRef.pl - Creates a file sequences that do not match a list of names
+
+ParallelBatch.py -runs the specified command on all files in the specified folder using the specified number of nodes
 
 rc.pl -Reverse-complement sequence
 
 RemoveDuplicates.pl -Deletes sequences with duplicate names
 
+RemoveSeqs.py -removes all sequences matching the search term from a file
+
+RunPhyml.py -Wrapper to run PhyML on the specified file
+
 ScafTranscritps.pl -Combines contigs that blast to the same reference gene
+
+SelaginellaPipeline.py -Automatically runs all scriptable steps of my Selaginella workflow
 
 SigDigits.pl -a simple script to trim all numbers in a csv file to the specified number of digits
 
@@ -52,6 +68,8 @@ trunc.pl -truncates sequences from STDIN
 Modules (Perl modules utilized by scripts in main folder):
 
 FileParser.pl -subroutines to read and write GTF and (modified) blast tabular entries
+
+HeathPy.py -custom python functions 
 
 
 =========================================================================================
