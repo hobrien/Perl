@@ -1,10 +1,12 @@
 #!/opt/local/bin/python
 
 
-import sys
+import sys, warnings, string
 from Bio import AlignIO
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
+from Bio.Alphabet import IUPAC
+from Bio.SeqRecord import SeqRecord
 
 def flatten_GTF(input):
   feature = input.copy()
@@ -56,7 +58,9 @@ def flatten_GTF(input):
   fields.append(attributes)
   return fields
 
-
+def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
+    import warnings
+    return ' %s:%s: %s: %s\n' % (filename, lineno, category.__name__, message)
 
 def smart_consensus(aln, threshold = .3, ambiguous = "N", gap = "-",
                   require_multiple = 0, consensus_alpha = "IUPACUnambiguousDNA"): 
@@ -146,7 +150,75 @@ def max_key (dict):
     elif dict[key] == max_value: 
       max_keys.append(key) 
   return max_keys
-  
+
+def get_orf(seq, blast_start, blast_end):
+  (cds_start, cds_end) = get_orf_coords(seq, blast_start, blast_end)
+  CDS = seq[cds_start:cds_end+1]
+
+  return CDS 
+   
+def get_orf_coords(seq, blast_start, blast_end):
+  warnings.formatwarning = warning_on_one_line
+  #determine the number of bp that must be trimmed from the start of the sequence to give correct frame
+  frame = blast_start % 3 - 1
+  if frame == -1:
+    frame = 2
+
+  #convert DNA coordinates to AA translation coordinates
+  tr_start = ( blast_start - frame ) / 3
+  tr_end = ( blast_end - frame -2 ) / 3  #subtract 2 extra bp because blast reports the last bp of the codon. We want the first
+
+  #Trim sequence to correct frame and remove partial codons (up to 2 bp from each end)
+  to_translate = seq[frame:]          #trim start
+  while len(to_translate) % 3:        #trim partial codons from end
+    to_translate = to_translate[:-1]
+
+  aa_tr = to_translate.seq.translate()  #Translate sequence
+
+  #Check for stop codons within homologous region (nonsense mutation)
+  if string.find(aa_tr, "*", tr_start, tr_end - 1) != -1:
+    warnings.warn("%s: Sequence contains a stop codon within the homologous region (likely due to a nonsense mutation)" % seq.id)
+
+  #Determine the postion of the first in-frame stop after (or at the end of) the homologous region  
+  aa_end = string.find(aa_tr, "*", tr_end - 1)  #This includes the last AA of the blast hit
+
+  if aa_end == -1:                              #No stop codon found. ORF extends beyond the contig
+    warnings.warn("%s: No stop codon. It is likely that the ORF extends beyond the contig (N-terminal fragement)" % seq.id)
+    aa_end = len(aa_tr)
+
+  #determine position of LAST in-frame stop before homologous region (start codon must occur after this position)
+  minimum_start = string.rfind(aa_tr, "*", 0, tr_start)  
+  if minimum_start == -1:          #no stop codon before homologous region
+    minimum_start = 0
+
+  #find first met after last in-frame start before (or at) start of homologous region
+  # (could also look for last met if we want to minimize the size of non-homologous coding sequence)
+  aa_start = string.find(aa_tr, "M", minimum_start, tr_start + 1) #include first AA of blast hit
+
+  if aa_start == -1:              #No start codon found. Either start ORF extends beyond
+    if minimum_start == 0:
+      warnings.warn("%s: No start codon.  It is likely that the ORF extends beyond the contig (C-terminal fragement).\n\t\t\t\t\t Setting ORF start to the start of the homologous region" % seq.id)
+    else:
+      warnings.warn("%s: Stop codon between start codon and homologous region (likely due to a nonsense mutation in non-homologous region).\n\t\t\t\t\t Setting ORF start to the start of the homologous region" % seq.id)
+    aa_start = tr_start
+
+  #Convert ORF coordinates back to DNA coordinates ( adding frame so numbers correspond to original seq.
+  #Could also use trimmed DNA seq, in which case this is unnecessary
+  cds_start = aa_start*3+frame
+  cds_end = aa_end*3+frame+2      #Add extra two bases to include all of final codon
+  return (cds_start, cds_end)
+ 
 if __name__ == "__main__":
-   aln = AlignIO.read(sys.argv[1], sys.argv[2])  #call with 2 arguments: filename and format
-   print smart_consensus(pad_ends(aln))
+  #aln = AlignIO.read(sys.argv[1], sys.argv[2])  #call with 2 arguments: filename and format
+  #print smart_consensus(pad_ends(aln))
+  seq = SeqRecord(Seq("TTTAGTTTTTTATGTTTTTTTTTTAGTTTTAG", IUPAC.unambiguous_dna), id='test_seq')
+  print "Testing get_orf with intact ORF:"
+  print  get_orf(seq, 15, 23).seq
+  print "Testing get_orf with pseudogene:"
+  print get_orf(seq, 15, 32).seq
+  print "Testing get_orf with no start codon:"
+  print get_orf(seq, 6, 23).seq  
+  print "Testing get_orf with no stop codon:"
+  print get_orf(seq[:23], 15, 21).seq  
+  print "Testing get_orf with stop codon between start and homologous region:"
+  print get_orf(seq, 27, 32).seq  
