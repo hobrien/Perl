@@ -26,7 +26,13 @@ NOTES
 I've now got this set up to make a database for the blast hits so I can use this to easily
 select the top hit and get the length.
 
-I'm also going to index the seq file so I don't have to store that in memory either
+Building the db is taking WAY too long. It's been going for 5 hours and no end in sight
+I am going to need to do some optimisation, probably starting with how multiple hits
+are dealt with. I'm currently doing a db lookup to see how many entires are already in the db
+a less robust (but hopefully faster) way will be to assume that all hits are consecutive and
+use a simple counter
+
+I'm going to give MySQL a shot and see if it works faster
 
 AUTHOR
 
@@ -40,7 +46,7 @@ import csv
 from os import path
 from ete2 import Tree  
 from Bio import SeqIO
-
+from Heathpy import make_db
 
 def main(argv):
   treefile = ''
@@ -72,16 +78,19 @@ def main(argv):
       blastfile = arg
 
   #Build database of blast results (if one doesn't already exist)
-  db_name = '.'.join(blastfile.split('.')[:-1] + ['db'])
+  db_name = blastfilename + '.db'
   if not path.exists(db_name):
     make_db(blastfile, db_name)
 
   #Build database of sequences (if one doesn't already exist)   
-  seq_db_name = '.'.join(seqfilename.split('.')[:-1] + ['inx'])
+  seq_db_name = seqfilename + '.inx'
   seq_db = SeqIO.index_db(seq_db_name, seqfilename, "fasta")
 
   #read in tree and root by midpoint
-  t = Tree(treefile)
+  try:
+    t = Tree(treefile)
+  except:
+    t = Tree( "(A,B,(C,D));" )
   R = t.get_midpoint_outgroup()
   t.set_outgroup(R)
 
@@ -108,7 +117,6 @@ def main(argv):
       else:                       #current seq longer (or no saved seq)
         rep_seq = seq
     if rep_seq:
-      rep_seq = 'KRAUScomp118232_c0_seq1_rc'
       if rep_seq.find('_rc') == -1:
         outfile.write(seq_db.get_raw(rep_seq))
       else:
@@ -122,32 +130,13 @@ def main(argv):
   logfile.close()
   outfile.close()
 
- 
-def make_db(blastfile, db_name):
-  conn = sqlite3.connect(db_name)
-  c = conn.cursor()
-  #strand: 1 = pos, 0 = neg
-  c.execute('''CREATE TABLE hits
-                (qseqid text, qlen int, sacc text, slen int, pident read, length int, mismatch int, gapopen int, qstart int, qend int, qframe int, sstart int, send int, sframe int, evalue float, bitscore float, strand bit, hitnum int)''')
-  with open(blastfile, 'rU') as infile:
-    reader=csv.reader(infile,delimiter='\t')
-    for row in reader:
-      row.append(1)  #add strand info to row
-      if int(row[8]) > int(row[9]):               #qstart > qend
-        (row[8], row[9]) = (row[9], row[8])       #reverse qstart and qend
-        row[-1] = 0                               #change strand to neg
-      if int(row[11]) > int(row[12]):             #sstart > send
-        (row[11], row[12]) = (row[12], row[11])   #reverse sstart and send
-        row[-1] = 0                               #change strand to neg
-      c.execute('SELECT COUNT(*) FROM hits WHERE qseqid=?', (row[0],)) #count number of entries for query in db
-      row.append(c.fetchone()[0])                                      #add count num to row
-      c.execute("INSERT INTO hits VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)", row)
-    conn.commit()
-  conn.close()
-
 def get_length(c, id):
-  c.execute('SELECT qstart, qend FROM hits WHERE qseqid=? and hitnum=0', (id,))
-  return reduce(lambda x, y: y-x+1,c.fetchone())
+  try:
+    c.execute('SELECT qstart, qend FROM hits WHERE qseqid=? and hitnum=1', (id,))
+    return reduce(lambda x, y: y-x+1,c.fetchone())
+  except TypeError:
+    print"Unable to fetch blast result for %s" % id
+    return 0
 
 def add_species(tree): 
    species_list = ['UNC', 'MOEL', 'WILD', 'KRAUS']
