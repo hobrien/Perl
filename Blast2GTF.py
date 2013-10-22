@@ -131,7 +131,6 @@ def main(argv):
       else:
         (feature['start'], feature['end']) = get_orf_coords(seq_record.reverse_complement(), len(seq_record) - feature['end'] + 1, len(seq_record) - feature['start'] + 1)              
       gtf_writer.writerow(flatten_GTF(feature))
-      print seq_record[feature['start'] - 1:feature['end']].seq
 
 
 def hit_overlap(hit1, hit2):
