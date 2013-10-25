@@ -26,13 +26,6 @@ NOTES
 I've now got this set up to make a database for the blast hits so I can use this to easily
 select the top hit and get the length.
 
-Building the db is taking WAY too long. It's been going for 5 hours and no end in sight
-I am going to need to do some optimisation, probably starting with how multiple hits
-are dealt with. I'm currently doing a db lookup to see how many entires are already in the db
-a less robust (but hopefully faster) way will be to assume that all hits are consecutive and
-use a simple counter
-
-I'm going to give MySQL a shot and see if it works faster
 
 AUTHOR
 
@@ -41,12 +34,11 @@ AUTHOR
 
 import sys
 import getopt
-import sqlite3
+import MySQLdb as mdb
 import csv
 from os import path
 from ete2 import Tree  
 from Bio import SeqIO
-from Heathpy import make_db
 
 def main(argv):
   treefile = ''
@@ -54,9 +46,8 @@ def main(argv):
   outfilename = ''
   logfilename = ''
   species_name = ''
-  blastfile = ''
   try:
-    opts, args = getopt.getopt(argv,"ht:n:o:l:s:b:",["tree=","infile=","species=", "outfile=","log=","blast="])
+    opts, args = getopt.getopt(argv,"ht:n:o:l:s:b:",["tree=","infile=","species=", "outfile=","log="])
   except getopt.GetoptError:
     print 'RemoveRedundant.py -t <treefile> -s <sequence_file> -n <species_name> -o <outfile> -l <logfile>'
     sys.exit(2)
@@ -74,16 +65,9 @@ def main(argv):
       logfilename = arg
     elif opt in ("-s", "--sequences"):
       seqfilename = arg
-    elif opt in ("-b", "--blast"):
-      blastfile = arg
-
-  #Build database of blast results (if one doesn't already exist)
-  db_name = blastfilename + '.db'
-  if not path.exists(db_name):
-    make_db(blastfile, db_name)
 
   #Build database of sequences (if one doesn't already exist)   
-  seq_db_name = seqfilename + '.inx'
+  seq_db_name = '.'.join(seqfilename.split('.')[:-1] + ['inx'])
   seq_db = SeqIO.index_db(seq_db_name, seqfilename, "fasta")
 
   #read in tree and root by midpoint
@@ -101,41 +85,42 @@ def main(argv):
   cluster_num = path.split(treefile)[1].split(".")[0] #get cluster number
 
   #cycle through monophyletic groups and select sequence with longest blast hit for each group
-  conn = sqlite3.connect(db_name)
-  c = conn.cursor()
   outfile = open(outfilename, "a")
   logfile = open(logfilename, "a")
-  for node in t.get_monophyletic(values=[species_name], target_attr="species"):
-    species_seqs = []
-    for leaf in node:
-      if 'kraussiana' not in leaf.name and 'willdenowii' not in leaf.name:  #exclude reference sequence from seq list
-        species_seqs.append(leaf.name)
-    rep_seq = ''
-    for seq in species_seqs:
-      if rep_seq and get_length(c, rep_seq.replace('_rc', '')) >= get_length(c, seq.replace('_rc', '')): #saved rep seq longer than current seq
-        pass
-      else:                       #current seq longer (or no saved seq)
-        rep_seq = seq
-    if rep_seq:
-      if rep_seq.find('_rc') == -1:
-        outfile.write(seq_db.get_raw(rep_seq))
-      else:
-        outseq = seq_db[rep_seq.replace('_rc','')].reverse_complement()
-        outseq.id = rep_seq
-        outseq.description = rep_seq
-        outfile.write(outseq.format("fasta"))
+  con = mdb.connect('localhost', 'root', '', 'Selaginella');
+  with con:
+    cur = con.cursor()
+    for node in t.get_monophyletic(values=[species_name], target_attr="species"):
+      species_seqs = []
+      for leaf in node:
+        if 'kraussiana' not in leaf.name and 'willdenowii' not in leaf.name:  #exclude reference sequence from seq list
+          species_seqs.append(leaf.name)
+      rep_seq = ''
       for seq in species_seqs:
-        logfile.write("%s\n" % ", ".join([seq, rep_seq, cluster_num]))
+        if rep_seq and get_length(cur, rep_seq.replace('_rc', '')) >= get_length(cur, seq.replace('_rc', '')): #saved rep seq longer than current seq
+          pass
+        else:                       #current seq longer (or no saved seq)
+          rep_seq = seq
+      if rep_seq:
+        if rep_seq.find('_rc') == -1:
+          outfile.write(seq_db.get_raw(rep_seq))
+        else:
+          outseq = seq_db[rep_seq.replace('_rc','')].reverse_complement()
+          outseq.id = rep_seq
+          outseq.description = rep_seq
+          outfile.write(outseq.format("fasta"))
+        for seq in species_seqs:
+          logfile.write("%s\n" % ", ".join([seq, rep_seq, cluster_num]))
 
   logfile.close()
   outfile.close()
 
 def get_length(c, id):
   try:
-    c.execute('SELECT qstart, qend FROM hits WHERE qseqid=? and hitnum=1', (id,))
+    c.execute('SELECT qstart, qend FROM Blast WHERE qseqid=%s and hitnum=1', (id,))
     return reduce(lambda x, y: y-x+1,c.fetchone())
   except TypeError:
-    print"Unable to fetch blast result for %s" % id
+    print "'SELECT qstart, qend FROM Blast WHERE qseqid=%s and hitnum=1': No Result" % id
     return 0
 
 def add_species(tree): 
