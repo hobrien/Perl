@@ -28,7 +28,7 @@ def main(argv):
   chloroplast_clusters = ("Cluster_10175", "Cluster_10226", "Cluster_10232", "Cluster_10485", "Cluster_10984", "Cluster_11190", "Cluster_11826", "Cluster_11977", "Cluster_11980", "Cluster_12324", "Cluster_12326", "Cluster_12658", "Cluster_12697", "Cluster_1272", "Cluster_12984", "Cluster_13661", "Cluster_13666", "Cluster_13836", "Cluster_14312", "Cluster_14375", "Cluster_14565", "Cluster_1826", "Cluster_2867", "Cluster_29556", "Cluster_4023", "Cluster_4421", "Cluster_5258", "Cluster_5739", "Cluster_5972", "Cluster_615", "Cluster_7013", "Cluster_7860", "Cluster_8325", "Cluster_8384")     
   cluster_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "SeqClusters.p")
   seq_groups = pickle.load( open( cluster_info, "rb" ) )
-  indexfilename = ".".join(seqfilename.split(".")[:-1] + ["inx"])
+  indexfilename = seqfilename + ".inx"
   new_seqs = SeqIO.index_db(indexfilename, seqfilename, "fasta")
   used_seqs = {}
   with open(blastfilename, 'rU') as f:
