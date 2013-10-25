@@ -102,9 +102,12 @@ my $x = 0;
 foreach (@seqlengths) {
   $total_length += $_;
 }
+my $seq_num = 0;
 foreach (@seqlengths) {
+  $seq_num ++;
   $cumulative_length += $_;
-  if ( $print_cumulative ) { print "$cumulative_length\n"; }
+  $filename =~/(.*)\.\w+/;
+  if ( $print_cumulative ) { print "$1\t$seq_num\t$cumulative_length\n"; }
   if ( $cumulative_length < ($total_length / 2) ) { $x ++; }
 }
 unless ( $print_cumulative ) {
