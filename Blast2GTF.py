@@ -17,24 +17,30 @@ It there are multiple hits to different targets and they don't overlap, all will
 
 Now (15 Oct) I'm going to refactor this to work with a SQLite database of blast results.
 
+Now (22 Oct) I'm going to refactor it to work with MySQL (all of the data is now in a MySQL db
+and it's actually indexed so the lookups are fast.
+
+This is also going to involve a bit more of a rewrite because the sequences are in the db
+
 """
 
 import sys, warnings , logging 
 import getopt 
 import csv
-import sqlite3
+import MySQLdb as mdb
 from os import path
 import cPickle as pickle
 from Heathpy import flatten_GTF, get_orf_coords, warning_on_one_line, make_db
-from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 def main(argv):
-  blastfilename = ''
   gtf_filename = ''
+  species = ''
   seqfilename = ''
-  usage = 'Blast2GTF.py -b <blastfile> -g <GTF_file> -s <seqfile>'
+  usage = 'Blast2GTF.py -n <species_name> -g <gtf_outfile> -s <seq_file>'
   try:
-    opts, args = getopt.getopt(argv,"hb:g:s:",["blast=","gtf=","sequence="])
+    opts, args = getopt.getopt(argv,"hn:g:s:",["name=", "gtf=", "seqfile="])
     if not opts:
       raise getopt.GetoptError('no opts')
   except getopt.GetoptError:
@@ -44,94 +50,116 @@ def main(argv):
     if opt == "-h":
        print usage
        sys.exit()
+    elif opt in ("-n", "--name"):
+       species = arg
+    elif opt in ("-s", "--seqfile"):
+       seqfilename = arg
     elif opt in ("-g", "--gtf"):
        gtf_filename = arg
-    elif opt in ("-b", "--blast"):
-       blastfilename = arg
-    elif opt in ("-s", "--sequence"):
-       seqfilename = arg
   
   LOG_FILENAME = '.'.join(gtf_filename.split('.')[:-1] + ['log'])
   logging.basicConfig(filename=LOG_FILENAME,level=logging.WARNING)
 
-  #Build database of blast results (if one doesn't already exist)
-  db_name = blastfilename + '.db'
-  if not path.exists(db_name):
-    make_db(blastfilename, db_name)
-
-  
     
-  #make a list of names to ensure that there are no duplicates
-  name_list = {}
-  name_num = 1
   
-  #read dictionary of cluster membership
-  cluster_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "SeqClusters.p")
-  seq_groups = pickle.load( open( cluster_info, "rb" ) )
-
-  conn = sqlite3.connect(db_name)
-  c = conn.cursor()
-
-  outfile = open(gtf_filename, 'wb')
-  gtf_writer = csv.writer(outfile, delimiter='\t', quotechar='', quoting=csv.QUOTE_NONE)
-  
-  for seq_record in SeqIO.parse(seqfilename, "fasta"):
-    hit_list = {}
-    frameshift_warn = 0
-    for row in c.execute('SELECT * FROM hits WHERE qseqid=?', (seq_record.id,)): 
-      qseqid, qlen, sacc, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore, strand, hitnum = row
-      feature = {
-        'source': '1kp',
-        'feature': 'blast_hit',
-        'frame': 1,
-        'seqname': qseqid,
-        'score': float(bitscore),
-        'start': int(qstart),
-        'end': int(qend)
-      }
-      #Add strand information and reverse coordinates if on negative strand
-      if strand:
-        feature['strand'] = '+'
-      else:
-        feature['strand'] = '-'
-                  
-      #Make list of all non-overlapping hits, printing a warning if there are multiple hits to the same sequence  
-      if sacc in hit_list:
-        if frameshift_warn == 0:
-          logging.warning("%s has multiple hits to %s" % (qseqid, sacc))
-          frameshift_warn = 1
-      else:
-        overlap = 0
-        for hit in hit_list.keys():
-          overlap = max(overlap, hit_overlap(hit_list[hit], feature))
-        if not overlap:
-          if sacc in seq_groups:
-            name = "%s_c%s_0" % (qseqid[0:qseqid.find('comp')], seq_groups[sacc].split("_")[1])
+  con = mdb.connect('localhost', 'root', '', 'Selaginella');
+  with con:
+    #make a list of names to ensure that there are no duplicates
+    name_list = {}
+      
+    #read dictionary of cluster membership (It would be far better to put this info into the db, but this is working, so I won't mess with it
+    cluster_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "RefSeq", "SeqClusters.p")
+    seq_groups = pickle.load( open( cluster_info, "rb" ) )
+    
+    if gtf_filename:
+      outfile = open(gtf_filename, 'wb')
+      gtf_writer = csv.writer(outfile, delimiter='\t', quotechar='', quoting=csv.QUOTE_NONE)
+    
+    if seqfilename:
+      seqfile = open(seqfilename, 'wb')
+    cur = con.cursor()
+    cur.execute("SELECT a.seqid, b.sequence FROM Species a, Ortholog_groups b WHERE a.seqid = b.seqid AND a.species= %s", (species))
+    #cur.execute("SELECT seqid, sequence FROM Ortholog_groups b WHERE seqid = 'UNCcomp100023_c0_seq1'")
+    rows = cur.fetchall()
+    for (seqid, seq) in rows:
+      try:
+        seq_record = SeqRecord(Seq(seq))
+      except TypeError:
+        warnings.warn("Can't create seq object from %s for %s" % (seq, seqid))
+        continue
+      if gtf_filename:       #Write blast info to GTF file
+        print seqid
+        print seq
+        hit_list = {}
+        frameshift_warn = 0
+        cur.execute("SELECT * FROM BLAST WHERE seqid=%s", (seqid,))
+        for (id, qseqid, sp, qlen, sacc, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore, strand, hitnum) in cur.fetchall():
+          feature = {
+          'source': '1kp',
+          'feature': 'blast_hit',
+          'frame': '.',
+          'seqname': qseqid,
+          'score': float(bitscore),
+          'start': int(qstart),
+          'end': int(qend)
+          }
+          #Add strand information and reverse coordinates if on negative strand
+          if strand == '1':
+            feature['strand'] = '+'
+          elif strand == '0':
+            feature['strand'] = '-'
           else:
-            name = sacc + "_0"                       
-          while name in name_list:
-            name = name.split("_")[0:-1] + [str(name_num)]
-            name = "_".join(name)
-            name_num = name_num + 1
-          name_list[name] = 1
-          name_num = 1
-          feature['gene_id'] = name
-          feature['transcript_id'] =  feature['gene_id'] + '.1'
-          hit_list[sacc] = feature
+            sys.exit("Strand %s not recognized" % strand)        
+        #Make list of all non-overlapping hits, printing a warning if there are multiple hits to the same sequence  
+        if sacc in hit_list:
+          if frameshift_warn == 0:
+            warnings.warn("%s has multiple hits to %s" % (qseqid, sacc))
+            frameshift_warn = 1
+        else:
+          overlap = 0
+          for hit in hit_list.keys():
+            overlap = max(overlap, hit_overlap(hit_list[hit], feature))
+          if not overlap:
+            if sacc in seq_groups:
+              name = "%s_c%s_0" % (qseqid[0:qseqid.find('comp')], seq_groups[sacc].split("_")[1])
+            else:
+              name = sacc + "_0"
+            name_num = 1                         
+            while name in name_list:
+              name = name.split("_")[0:-1] + [str(name_num)]
+              name = "_".join(name)
+              name_num = name_num + 1
+            name_list[name] = 1
+            feature['gene_id'] = name
+            feature['transcript_id'] =  feature['gene_id'] + '.1'
+            hit_list[sacc] = feature
 
-    for feature in hit_list.values():
-      #write info about blast hit to GTF
-      gtf_writer.writerow(flatten_GTF(feature))
+        for feature in hit_list.values():
+          #write info about blast hit to GTF
+          #gtf_writer.writerow(flatten_GTF(feature))
             
-      #write info about ORF containing blast hit to file
-      feature['feature'] = 'CDS'
-      feature['score'] = '.'
-      if feature['strand'] == '+':
-        (feature['start'], feature['end']) = get_orf_coords(seq_record, feature['start'], feature['end'])
-      else:
-        (feature['start'], feature['end']) = get_orf_coords(seq_record.reverse_complement(), len(seq_record) - feature['end'] + 1, len(seq_record) - feature['start'] + 1)              
-      gtf_writer.writerow(flatten_GTF(feature))
-
+          #write info about ORF containing blast hit to file
+          feature['feature'] = 'CDS'
+          feature['score'] = '.'
+          if feature['strand'] == '+':
+            (feature['start'], feature['end']) = get_orf_coords(seq_record, qstart, qend)
+            feature['frame'] = feature['start'] % 3 + 1
+            print feature['start'], feature['end']
+            note = orf_integrity(Seq(seq[feature['start']-1:feature['end']]))
+            if note: feature['note'] = note
+          else:
+            print qstart, qend
+            (orf_start, orf_end) = get_orf_coords(seq_record.reverse_complement(), len(seq_record) - qend + 1, len(seq_record) - qstart + 1)    
+            print orf_start, orf_end         
+            (feature['end'], feature['start']) = (len(seq_record) - orf_end + 1, len(seq_record) - orf_start + 1)            
+            feature['frame'] = ( len(seq_record) - feature['end'] + 1 ) % 3 + 1
+            orf_rev = Seq(seq[feature['start']-1:feature['end']] )          
+            print feature['start'], feature['end']
+            note = orf_integrity(orf_rev.reverse_complement())
+            if note: feature['note'] = note
+          gtf_writer.writerow(flatten_GTF(feature))
+      if seqfile:
+        seqfile.write(">%s\n%s\n" % (seqid, seq))
 
 def hit_overlap(hit1, hit2):
   overlap = 0
@@ -143,8 +171,23 @@ def hit_overlap(hit1, hit2):
   if hit1['start'] <= hit2['start'] and hit1['end'] >= hit2['end']:  #hit1 starts before hit2 and ends after
     overlap = 1
   return overlap  
-  
-      
+
+def orf_integrity(seq):
+  orf = ''
+  print seq
+  aa_seq = seq.translate()
+  if seq[0] != 'M':
+    orf = "C-terminal fragment"
+  end = seq[-1]
+  if end != '*':
+    if orf:
+      orf = "Internal fragment"
+    else:
+      orf = "N-terminal fragment"
+  if seq[:-1].find("*") > -1:
+    orf = "Pseudogene"
+  return orf
+
 if __name__ == "__main__":
    main(sys.argv[1:])
 
