@@ -1,6 +1,6 @@
 #!/usr/local/bin/python
 
-import sys, time
+import sys, time, getopt
 from os import path, system
 
 def main(argv):
@@ -22,12 +22,13 @@ def main(argv):
       logfilename = arg
     elif opt in ("-s", "--step"):
       step = arg
-
+  
+  step = int(step)
   #Make all of the file/folder names needed for pipeline
-  if ! logfilename:
+  if not logfilename:
     logfilename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Logs", species + "_log.txt")
   raw_assembly = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Assemblies", species + "_Tr.fa")
-  blast_all = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Blast", species + "_Tr_1kp.bl")
+  blast_all = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Blast", species + "_Tr_Selmo_all.bl")
   gtf_all = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "GTF", species + "_Tr_1kp.gtf")
   contig_folder = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "ContigClusters")
   consensus_file = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Assemblies", species + "_Tr_cons.fa")
@@ -35,8 +36,8 @@ def main(argv):
   index = path.join(path.expanduser("~"), "Bioinformatics", "Index", species + "_Tr_cons")
   merge_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Mappings", species + "_Tr_cons_unstranded_merge.txt")
   merge_dir = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Mappings", species + "_Tr_cons_unstranded_merge")
-  consensus_blast = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Blast", species + "_Tr_cons_1kp.bl")
-  consensus_blast_table = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Blast", species + "_Tr_cons_1kp_tbl.bl")
+  consensus_blast = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Blast", species + "_Tr_cons_selmo_all.bl")
+  consensus_blast_table = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Blast", species + "_Tr_cons_selmo_all_tbl.bl")
 
   if species == 'MOEL':
     lib_num = 3
@@ -72,14 +73,6 @@ def main(argv):
                 ))
           )
 
-  #In the initial round of clustering, full-length contig sequence will be used
-  #This will have the result that chimerics will not be included in consensus sequences
-  #because the non-homologous sequence will prevent them from grouping with other sequences
-  if step <= 3:
-    log.write("\n%s, Create GTF with blast info:\n" % time.asctime(time.localtime()))
-    log.write("Blast2GTF.py -b %s -g %s\n" % (blast_all, gtf_all)) #Create GTF with blast info
-    system("Blast2GTF.py -b %s -g %s" % (blast_all, gtf_all)) #Create GTF with blast info
-
   if step <= 4:
     log.write("\n%s, Add contig sequences to clusters:\n" % time.asctime(time.localtime()))
     log.write("Blast2OrthologGroup.py -b %s -s %s\n" % (blast_all, raw_assembly)) #Add sequences to clusters
@@ -91,6 +84,15 @@ def main(argv):
     log.write("ParallelBatch.py -f %s -g .fa -c 'RunPhyml.py * fast'\n" % contig_folder)
     system("ParallelBatch.py -f %s -g .fa -c 'RunPhyml.py * fast'" % contig_folder)
 
+
+
+
+
+
+
+
+
+
   #Make consensus sequences
   if step <=6:
     log.write("\n%s, Make consensus sequences:\n" % time.asctime(time.localtime()))
@@ -98,7 +100,10 @@ def main(argv):
     system("rm names.p")
     log.write("ParallelBatch.py -p 1 -f %s -g .fa -c 'RunMakeConsensus.py * %s'\n" % (contig_folder, species) )
     system("ParallelBatch.py -p 1 -f %s -g .fa -c 'RunMakeConsensus.py * %s'" % (contig_folder, species) )
-
+    #remove contig sequences from alignments
+    log.write("ParallelBatch.py -p 8 -f %s -g .fa -c 'RemoveSeqs.py * %s'\n" % ( contig_folder, species) )
+    system("ParallelBatch.py -p 8 -f %s -g .fa -c 'RemoveSeqs.py -s * -g %s'" % ( contig_folder, species) )
+    
   #Index consensus file for read mapping
   if step <=7:
     log.write("\n%s, Index consensus file for read mapping:\n" % time.asctime(time.localtime()))
