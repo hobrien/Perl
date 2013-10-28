@@ -3,35 +3,14 @@
 import sys, time, getopt
 from os import path, system
 
-def main(argv):
-  step = 1
-  species = ''
-  logfilename = ''
-  try:
-    opts, args = getopt.getopt(argv,"hn:s:l:",["name=", "step=","log="])
-  except getopt.GetoptError:
-    print 'SelaginellaPipeline.py -n <name> [ -s <step> -l <logfile> ]'
-    sys.exit(2)
-  for opt, arg in opts:
-    if opt == '-h':
-      print 'SelaginellaPipeline.py -n <name> [ -s <step> -l <logfile> ]'
-      sys.exit()
-    elif opt in ("-n", "--name"):
-      species = arg
-    elif opt in ("-l", "--log"):
-      logfilename = arg
-    elif opt in ("-s", "--step"):
-      step = arg
-  
+def main(species, step, logfilename):
   step = int(step)
   #Make all of the file/folder names needed for pipeline
-  if not logfilename:
-    logfilename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Logs", species + "_log.txt")
   raw_assembly = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Assemblies", species + "_Tr.fa")
   blast_all = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Blast", species + "_Tr_Selmo_all.bl")
   gtf_all = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "GTF", species + "_Tr_1kp.gtf")
   contig_folder = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "ContigClusters")
-  consensus_file = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Assemblies", species + "_Tr_cons.fa")
+  consensus_file = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Assemblies", species + "_nr.fa")
   indexed_file = path.join(path.expanduser("~"), "Bioinformatics", "Index", species + "_Tr_cons.fa")
   index = path.join(path.expanduser("~"), "Bioinformatics", "Index", species + "_Tr_cons")
   merge_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Mappings", species + "_Tr_cons_unstranded_merge.txt")
@@ -170,41 +149,34 @@ def main(argv):
     log.write("cuffmerge -o %s -s %s %s\n" % (merge_dir, consensus_file, merge_info)) 
     system("cuffmerge -o %s -s %s %s" % (merge_dir, consensus_file, merge_info))
 
-  #Blast consensus sequences against Selmo_all db (for now, this is going to use the full
-  #output so that it can be run with OrfPredictor, but I may try to recode the basic 
-  #functionality of OrfPredictor so it is scriptable and so I have more control over
-  #how it works. In that case I could just use tabular output
-  if step <=10:
-    log.write("\n%s, Blast Consensus Sequences:\n" % time.asctime(time.localtime()))
-    log.write(" ".join(("blastx -num_descriptions 1", 
-                 "-num_alignments 1",
-                 "-evalue 1e-5",
-                 "-num_threads 8",
-                 "-query %s" % consensus_file,
-                 "-db Selmo_all_aa",
-                  "-out %s\n" % consensus_blast
-                ))
-           )
-    system(" ".join(("blastx -num_descriptions 1", 
-                 "-num_alignments 1",
-                 "-evalue 1e-5",
-                 "-num_threads 8",
-                 "-query %s" % consensus_file,
-                 "-db Selmo_all_aa",
-                  "-out %s" % consensus_blast
-                ))
-           )
-
-    log.write("\n%s, Convert Blast Output to tabular:\n" % time.asctime(time.localtime()))
-    log.write("ConvertBlast.py %s > %s\n" % (consensus_blast, consensus_blast_table))
-    system("ConvertBlast.py %s > %s" % (consensus_blast, consensus_blast_table))
-
   #This is as far as I go so long as I need to use the online version of OrfPredictor
   log.close()
 
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
-
-
-  
+  step = 7
+  species = ''
+  logfilename = ''
+  try:
+    opts, args = getopt.getopt(argv,"hn:s:l:",["name=", "step=","log="])
+  except getopt.GetoptError:
+    print 'SelaginellaPipeline.py -n <name> [ -s <step> -l <logfile> ]'
+    sys.exit(2)
+  for opt, arg in opts:
+    if opt == '-h':
+      print 'SelaginellaPipeline.py -n <name> [ -s <step> -l <logfile> ]'
+      sys.exit()
+    elif opt in ("-n", "--name"):
+      species = arg
+    elif opt in ("-l", "--log"):
+      logfilename = arg
+    elif opt in ("-s", "--step"):
+      step = arg
+  if not logfilename:
+    logfilename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Logs", species + "_log.txt")    
+  if species:
+    main(species, step, logfilename)  
+  else:  
+    for species in ('UNC', 'MOEL', 'WILD', 'KRAUS'):
+      main(species, step, logfilename)
+  exit
