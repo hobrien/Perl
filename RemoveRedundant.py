@@ -67,8 +67,8 @@ def main(argv):
       seqfilename = arg
 
   #Build database of sequences (if one doesn't already exist)   
-  seq_db_name = '.'.join(seqfilename.split('.')[:-1] + ['inx'])
-  seq_db = SeqIO.index_db(seq_db_name, seqfilename, "fasta")
+  indexfilename = seqfilename + ".inx"
+  seq_db = SeqIO.index_db(indexfilename, seqfilename, "fasta")
 
   #read in tree and root by midpoint
   try:
@@ -97,18 +97,12 @@ def main(argv):
           species_seqs.append(leaf.name)
       rep_seq = ''
       for seq in species_seqs:
-        if rep_seq and get_length(cur, rep_seq.replace('_rc', '')) >= get_length(cur, seq.replace('_rc', '')): #saved rep seq longer than current seq
+        if rep_seq and get_length(cur, rep_seq) >= get_length(cur, seq.): #saved rep seq longer than current seq
           pass
         else:                       #current seq longer (or no saved seq)
           rep_seq = seq
       if rep_seq:
-        if rep_seq.find('_rc') == -1:
-          outfile.write(seq_db.get_raw(rep_seq))
-        else:
-          outseq = seq_db[rep_seq.replace('_rc','')].reverse_complement()
-          outseq.id = rep_seq
-          outseq.description = rep_seq
-          outfile.write(outseq.format("fasta"))
+        outfile.write(seq_db.get_raw(rep_seq))
         for seq in species_seqs:
           logfile.write("%s\n" % ", ".join([seq, rep_seq, cluster_num]))
 
