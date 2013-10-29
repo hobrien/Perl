@@ -75,7 +75,7 @@ def main(argv):
       seqfile = open(seqfilename, 'wb')
     cur = con.cursor()
     cur.execute("SELECT a.seqid, b.sequence FROM Species a, Ortholog_groups b WHERE a.seqid = b.seqid AND a.species= %s", (species))
-    #cur.execute("SELECT seqid, sequence FROM Ortholog_groups b WHERE seqid = 'UNCcomp100025_c0_seq1'")
+    #cur.execute("SELECT seqid, sequence FROM Ortholog_groups b WHERE seqid = 'UNCcomp100582_c0_seq1'")
     rows = cur.fetchall()
     for (seqid, seq) in rows:
       try:
@@ -85,7 +85,6 @@ def main(argv):
         continue
       if gtf_filename:       #Write blast info to GTF file
         hit_list = {}
-        frameshift_warn = 0
         cur.execute("SELECT * FROM BLAST WHERE qseqid=%s", (seqid,))
         for (id, qseqid, qlen, sacc, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore, strand, hitnum) in cur.fetchall():
           feature = {
@@ -103,12 +102,25 @@ def main(argv):
           elif strand == '0':
             feature['strand'] = '-'
           else:
-            sys.exit("Strand %s not recognized" % strand)        
-          #Make list of all non-overlapping hits, printing a warning if there are multiple hits to the same sequence
+            sys.exit("Strand %s not recognized" % strand)
+                 
+          """Make list of all non-overlapping hits, printing a warning if there are multiple 
+          hits to the same sequence and combining the coordinates if there are multiple hits
+          to the same sequence.
+          
+          This has the potential to cause problems because coordinates can change after they 
+          are added to the hit_list meaning that features that started out non-overlapping
+          may end up overlapping after the adjustment
+          
+          One solution to this is to combine the hits in a first pass, then to check for overlaps
+          after. The only wrinkle with this is that I would need to keep track of the hit
+          order since this info is lost in the dic construct. This could easily be done with
+          a simple list. If the hit isn't in the dict, add it to the list"""
           if sacc in hit_list:
-            if frameshift_warn == 0:
-              warnings.warn("%s has multiple hits to %s" % (qseqid, sacc))
-              frameshift_warn = 1
+            if hit_list[sacc]['start'] > feature['start']:
+              hit_list[sacc]['start'] = feature['start']
+            if hit_list[sacc]['end'] < feature['end']:
+              hit_list[sacc]['end'] = feature['end']
           else:
             overlap = 0
             for hit in hit_list.keys():
@@ -166,17 +178,22 @@ def hit_overlap(hit1, hit2):
 
 def orf_integrity(seq):
   orf = ''
-  aa_seq = seq.translate()
-  if aa_seq[0] != 'M':
-    orf = "C-terminal fragment"
-  end = aa_seq[-1]
-  if end != '*':
-    if orf:
-      orf = "Internal fragment"
-    else:
-      orf = "N-terminal fragment"
-  if seq[:-1].find("*") > -1:
-    orf = "Pseudogene"
+  if len(seq) % 3 != 0:
+    orf = "Frameshift"
+  else:  
+    aa_seq = seq.translate()
+    if aa_seq[0] != 'M':
+      orf = "C-terminal fragment"
+    end = aa_seq[-1]
+    if end != '*':
+      if orf:
+        orf = "Internal fragment"
+      else:
+        orf = "N-terminal fragment"
+    if len(seq) % 3 != 0:
+      orf = "Frameshift"    
+    if seq[:-1].find("*") > -1:
+      orf = "Pseudogene"
   return orf
 
 if __name__ == "__main__":
