@@ -85,6 +85,7 @@ def main(argv):
         continue
       if gtf_filename:       #Write blast info to GTF file
         hit_list = {}
+        hit_order = []
         cur.execute("SELECT * FROM BLAST WHERE qseqid=%s", (seqid,))
         for (id, qseqid, qlen, sacc, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore, strand, hitnum) in cur.fetchall():
           feature = {
@@ -104,27 +105,23 @@ def main(argv):
           else:
             sys.exit("Strand %s not recognized" % strand)
                  
-          """Make list of all non-overlapping hits, printing a warning if there are multiple 
-          hits to the same sequence and combining the coordinates if there are multiple hits
-          to the same sequence.
-          
-          This has the potential to cause problems because coordinates can change after they 
-          are added to the hit_list meaning that features that started out non-overlapping
-          may end up overlapping after the adjustment
-          
-          One solution to this is to combine the hits in a first pass, then to check for overlaps
-          after. The only wrinkle with this is that I would need to keep track of the hit
-          order since this info is lost in the dic construct. This could easily be done with
-          a simple list. If the hit isn't in the dict, add it to the list"""
+          #In cases where multiple hits to the same subject, combine by maximizing coordinates
           if sacc in hit_list:
             if hit_list[sacc]['start'] > feature['start']:
               hit_list[sacc]['start'] = feature['start']
             if hit_list[sacc]['end'] < feature['end']:
               hit_list[sacc]['end'] = feature['end']
           else:
+            hit_order.append(sacc)
+            hit_list[sacc] = feature
+        
+        #Scan through hits in order and write CDS features for non-overlapping ones
+        for i in range(len(hit_order)):    
             overlap = 0
-            for hit in hit_list.keys():
-              overlap = max(overlap, hit_overlap(hit_list[hit], feature))
+            sacc = hit_order[i]
+            feature = hit_list[sacc]
+            for j in range(i):
+              overlap = max(overlap, hit_overlap(feature, hit_list[hit_order[j]]))
             if not overlap:
               if sacc in seq_groups:
                 name = "%s_c%s_0" % (qseqid[0:qseqid.find('comp')], seq_groups[sacc].split("_")[1])
@@ -138,29 +135,22 @@ def main(argv):
               name_list[name] = 1
               feature['gene_id'] = name
               feature['transcript_id'] =  feature['gene_id'] + '.1'
-              hit_list[sacc] = feature
-
-        for feature in hit_list.values():
-          #write info about blast hit to GTF
-          #gtf_writer.writerow(flatten_GTF(feature))
-            
-          #write info about ORF containing blast hit to file
-          feature['feature'] = 'CDS'
-          feature['score'] = '.'
-          if feature['strand'] == '+':
-            (feature['start'], feature['end']) = get_orf_coords(seq_record, feature['start'], feature['end'])
-            feature['frame'] = feature['start'] % 3 + 1
-            #print "feature start, feature end = %s, %s" % ( feature['start'], feature['end'] )
-            note = orf_integrity(Seq(seq[feature['start']-1:feature['end']]))
-            if note: feature['note'] = note
-          else:
-            (orf_start, orf_end) = get_orf_coords(seq_record.reverse_complement(), len(seq_record) - qend + 1, len(seq_record) - qstart + 1)    
-            (feature['start'], feature['end']) = (len(seq_record) - orf_end + 1, len(seq_record) - orf_start + 1)            
-            feature['frame'] = ( len(seq_record) - feature['end'] + 1 ) % 3 + 1
-            orf_rev = Seq(seq[feature['start']-1:feature['end']] )          
-            note = orf_integrity(orf_rev.reverse_complement())
-            if note: feature['note'] = note
-          gtf_writer.writerow(flatten_GTF(feature))
+              feature['feature'] = 'CDS'
+              feature['score'] = '.'
+              if feature['strand'] == '+':
+                (feature['start'], feature['end']) = get_orf_coords(seq_record, feature['start'], feature['end'])
+                feature['frame'] = feature['start'] % 3 + 1
+                #print "feature start, feature end = %s, %s" % ( feature['start'], feature['end'] )
+                note = orf_integrity(Seq(seq[feature['start']-1:feature['end']]))
+                if note: feature['note'] = note
+              else:
+                (orf_start, orf_end) = get_orf_coords(seq_record.reverse_complement(), len(seq_record) - qend + 1, len(seq_record) - qstart + 1)    
+                (feature['start'], feature['end']) = (len(seq_record) - orf_end + 1, len(seq_record) - orf_start + 1)            
+                feature['frame'] = ( len(seq_record) - feature['end'] + 1 ) % 3 + 1
+                orf_rev = Seq(seq[feature['start']-1:feature['end']] )          
+                note = orf_integrity(orf_rev.reverse_complement())
+                if note: feature['note'] = note
+              gtf_writer.writerow(flatten_GTF(feature))
 
       if seqfilename:
         seqfile.write(">%s\n%s\n" % (seqid, seq))
