@@ -57,10 +57,6 @@ def main(argv):
     elif opt in ("-g", "--gtf"):
        gtf_filename = arg
   
-  LOG_FILENAME = '.'.join(gtf_filename.split('.')[:-1] + ['log'])
-  logging.basicConfig(filename=LOG_FILENAME,level=logging.WARNING)
-
-    
   
   con = mdb.connect('localhost', 'root', '', 'Selaginella');
   with con:
@@ -79,7 +75,7 @@ def main(argv):
       seqfile = open(seqfilename, 'wb')
     cur = con.cursor()
     cur.execute("SELECT a.seqid, b.sequence FROM Species a, Ortholog_groups b WHERE a.seqid = b.seqid AND a.species= %s", (species))
-    #cur.execute("SELECT seqid, sequence FROM Ortholog_groups b WHERE seqid = 'UNCcomp100023_c0_seq1'")
+    #cur.execute("SELECT seqid, sequence FROM Ortholog_groups b WHERE seqid = 'UNCcomp100025_c0_seq1'")
     rows = cur.fetchall()
     for (seqid, seq) in rows:
       try:
@@ -88,21 +84,19 @@ def main(argv):
         warnings.warn("Can't create seq object from %s for %s" % (seq, seqid))
         continue
       if gtf_filename:       #Write blast info to GTF file
-        print seqid
-        print seq
         hit_list = {}
         frameshift_warn = 0
-        cur.execute("SELECT * FROM BLAST WHERE seqid=%s", (seqid,))
-        for (id, qseqid, sp, qlen, sacc, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore, strand, hitnum) in cur.fetchall():
+        cur.execute("SELECT * FROM BLAST WHERE qseqid=%s", (seqid,))
+        for (id, qseqid, qlen, sacc, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore, strand, hitnum) in cur.fetchall():
           feature = {
-          'source': '1kp',
-          'feature': 'blast_hit',
-          'frame': '.',
-          'seqname': qseqid,
-          'score': float(bitscore),
-          'start': int(qstart),
-          'end': int(qend)
-          }
+            'source': '1kp',
+            'feature': 'blast_hit',
+            'frame': '.',
+            'seqname': qseqid,
+            'score': float(bitscore),
+            'start': int(qstart),
+            'end': int(qend)
+                   }
           #Add strand information and reverse coordinates if on negative strand
           if strand == '1':
             feature['strand'] = '+'
@@ -110,29 +104,29 @@ def main(argv):
             feature['strand'] = '-'
           else:
             sys.exit("Strand %s not recognized" % strand)        
-        #Make list of all non-overlapping hits, printing a warning if there are multiple hits to the same sequence  
-        if sacc in hit_list:
-          if frameshift_warn == 0:
-            warnings.warn("%s has multiple hits to %s" % (qseqid, sacc))
-            frameshift_warn = 1
-        else:
-          overlap = 0
-          for hit in hit_list.keys():
-            overlap = max(overlap, hit_overlap(hit_list[hit], feature))
-          if not overlap:
-            if sacc in seq_groups:
-              name = "%s_c%s_0" % (qseqid[0:qseqid.find('comp')], seq_groups[sacc].split("_")[1])
-            else:
-              name = sacc + "_0"
-            name_num = 1                         
-            while name in name_list:
-              name = name.split("_")[0:-1] + [str(name_num)]
-              name = "_".join(name)
-              name_num = name_num + 1
-            name_list[name] = 1
-            feature['gene_id'] = name
-            feature['transcript_id'] =  feature['gene_id'] + '.1'
-            hit_list[sacc] = feature
+          #Make list of all non-overlapping hits, printing a warning if there are multiple hits to the same sequence
+          if sacc in hit_list:
+            if frameshift_warn == 0:
+              warnings.warn("%s has multiple hits to %s" % (qseqid, sacc))
+              frameshift_warn = 1
+          else:
+            overlap = 0
+            for hit in hit_list.keys():
+              overlap = max(overlap, hit_overlap(hit_list[hit], feature))
+            if not overlap:
+              if sacc in seq_groups:
+                name = "%s_c%s_0" % (qseqid[0:qseqid.find('comp')], seq_groups[sacc].split("_")[1])
+              else:
+                name = sacc + "_0"
+              name_num = 1                         
+              while name in name_list:
+                name = name.split("_")[0:-1] + [str(name_num)]
+                name = "_".join(name)
+                name_num = name_num + 1
+              name_list[name] = 1
+              feature['gene_id'] = name
+              feature['transcript_id'] =  feature['gene_id'] + '.1'
+              hit_list[sacc] = feature
 
         for feature in hit_list.values():
           #write info about blast hit to GTF
@@ -142,23 +136,21 @@ def main(argv):
           feature['feature'] = 'CDS'
           feature['score'] = '.'
           if feature['strand'] == '+':
-            (feature['start'], feature['end']) = get_orf_coords(seq_record, qstart, qend)
+            (feature['start'], feature['end']) = get_orf_coords(seq_record, feature['start'], feature['end'])
             feature['frame'] = feature['start'] % 3 + 1
-            print feature['start'], feature['end']
+            #print "feature start, feature end = %s, %s" % ( feature['start'], feature['end'] )
             note = orf_integrity(Seq(seq[feature['start']-1:feature['end']]))
             if note: feature['note'] = note
           else:
-            print qstart, qend
             (orf_start, orf_end) = get_orf_coords(seq_record.reverse_complement(), len(seq_record) - qend + 1, len(seq_record) - qstart + 1)    
-            print orf_start, orf_end         
-            (feature['end'], feature['start']) = (len(seq_record) - orf_end + 1, len(seq_record) - orf_start + 1)            
+            (feature['start'], feature['end']) = (len(seq_record) - orf_end + 1, len(seq_record) - orf_start + 1)            
             feature['frame'] = ( len(seq_record) - feature['end'] + 1 ) % 3 + 1
             orf_rev = Seq(seq[feature['start']-1:feature['end']] )          
-            print feature['start'], feature['end']
             note = orf_integrity(orf_rev.reverse_complement())
             if note: feature['note'] = note
           gtf_writer.writerow(flatten_GTF(feature))
-      if seqfile:
+
+      if seqfilename:
         seqfile.write(">%s\n%s\n" % (seqid, seq))
 
 def hit_overlap(hit1, hit2):
@@ -174,11 +166,10 @@ def hit_overlap(hit1, hit2):
 
 def orf_integrity(seq):
   orf = ''
-  print seq
   aa_seq = seq.translate()
-  if seq[0] != 'M':
+  if aa_seq[0] != 'M':
     orf = "C-terminal fragment"
-  end = seq[-1]
+  end = aa_seq[-1]
   if end != '*':
     if orf:
       orf = "Internal fragment"
