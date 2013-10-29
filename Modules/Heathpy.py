@@ -83,8 +83,10 @@ def flatten_GTF(input):
   except KeyError:
     sys.exit("no frame tag")
   attributes = ""
-  keys = feature.keys().sort()
-  for key in sorted(feature, key=feature.get):
+  keys = feature.keys()
+  keys.sort()
+  #for key in sorted(feature, key=feature.get):
+  for key in keys:
     attributes = attributes + '%s "%s"; ' % (key, feature[key])
   fields.append(attributes)
   return fields
@@ -191,31 +193,45 @@ def get_orf(seq, blast_start, blast_end):
 def get_orf_coords(seq, blast_start, blast_end):
   warnings.formatwarning = warning_on_one_line
   #determine the number of bp that must be trimmed from the start of the sequence to give correct frame
-  frame = blast_start % 3 - 1
-  if frame == -1:
-    frame = 2
+  start_frame = blast_start % 3 - 1
+  if start_frame == -1:
+    start_frame = 2
 
-  #convert DNA coordinates to AA translation coordinates
-  tr_start = ( blast_start - frame ) / 3
-  tr_end = ( blast_end - frame -2 ) / 3  #subtract 2 extra bp because blast reports the last bp of the codon. We want the first
 
   #Trim sequence to correct frame and remove partial codons (up to 2 bp from each end)
-  to_translate = seq[frame:]          #trim start
+  to_translate = seq[start_frame:]          #trim start
   while len(to_translate) % 3:        #trim partial codons from end
     to_translate = to_translate[:-1]
 
   aa_tr = to_translate.seq.translate()  #Translate sequence
 
+  #If there is a frameshift, I need to modify the sequence then retranslate so that the end is in frame
+  end_frame = (blast_end -2) % 3 - 1 #subtract 2 extra bp because blast reports the last bp of the codon. We want the first
+  if end_frame == -1:
+    end_frame = 2
+  if end_frame == start_frame:
+    aa_tr_end = aa_tr
+  else:
+    to_end = seq[end_frame:]
+    while len(to_end) % 3:        #trim partial codons from end
+      to_end = to_end[:-1]
+    aa_tr_end = to_end.seq.translate()  #Translate sequence
+    
+  #convert DNA coordinates to AA translation coordinates
+  tr_start = ( blast_start - start_frame ) / 3
+  tr_end = ( blast_end - end_frame -2 ) / 3  #subtract 2 extra bp because blast reports the last bp of the codon. We want the first
+
   #Check for stop codons within homologous region (nonsense mutation)
   if string.find(aa_tr, "*", tr_start, tr_end - 1) != -1:
     warnings.warn("%s: Sequence contains a stop codon within the homologous region (likely due to a nonsense mutation)" % seq.id)
 
-  #Determine the postion of the first in-frame stop after (or at the end of) the homologous region  
-  aa_end = string.find(aa_tr, "*", tr_end - 1)  #This includes the last AA of the blast hit
-
+  #Determine the postion of the first in-frame stop after (or at the end of) the homologous region
+  
+  aa_end = string.find(aa_tr_end, "*", tr_end - 1)  #This includes the last AA of the blast hit
   if aa_end == -1:                              #No stop codon found. ORF extends beyond the contig
     warnings.warn("%s: No stop codon. It is likely that the ORF extends beyond the contig (N-terminal fragement)" % seq.id)
     aa_end = len(aa_tr) - 1
+    
 
   #determine position of LAST in-frame stop before homologous region (start codon must occur after this position)
   minimum_start = string.rfind(aa_tr, "*", 0, tr_start)  
@@ -235,8 +251,8 @@ def get_orf_coords(seq, blast_start, blast_end):
 
   #Convert ORF coordinates back to DNA coordinates ( adding frame so numbers correspond to original seq.
   #Could also use trimmed DNA seq, in which case this is unnecessary
-  cds_start = aa_start*3+frame
-  cds_end = aa_end*3+frame+2       #Add extra two bases to include all of final codon
+  cds_start = aa_start*3+start_frame
+  cds_end = (aa_end*3)+end_frame+2       #Add extra two bases to include all of final codon
   return (cds_start+1, cds_end+1)  #Convert to one-based counting
  
 if __name__ == "__main__":
@@ -252,4 +268,8 @@ if __name__ == "__main__":
   print "Testing get_orf with no stop codon:"
   print get_orf(seq[:23], 15, 21).seq  
   print "Testing get_orf with stop codon between start and homologous region:"
-  print get_orf(seq, 27, 32).seq  
+  print get_orf(seq, 27, 32).seq
+  print "Testting get_orf with frameshift:"
+  seq = SeqRecord(Seq("TTTAGTTTTTTATGTTTTTTTTTTTAGTTTTAG", IUPAC.unambiguous_dna), id='test_seq')
+  print  get_orf(seq, 15, 21).seq
+  
