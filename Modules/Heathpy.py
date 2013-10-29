@@ -2,11 +2,42 @@
 
 
 import sys, warnings, string
+import sqlite3
+import csv
 from Bio import AlignIO
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio.Alphabet import IUPAC
 from Bio.SeqRecord import SeqRecord
+
+def make_db(blastfile, db_name):
+  conn = sqlite3.connect(db_name)
+  c = conn.cursor()
+  #strand: 1 = pos, 0 = neg
+  c.execute('''CREATE TABLE hits
+                (qseqid text, qlen int, sacc text, slen int, pident read, length int, mismatch int, gapopen int, qstart int, qend int, qframe int, sstart int, send int, sframe int, evalue float, bitscore float, strand bit, hitnum int)''')
+  with open(blastfile, 'rU') as infile:
+    reader=csv.reader(infile,delimiter='\t')
+    prev = 'init'
+    hit_num = 0
+    for row in reader:
+      row.append(1)  #add strand info to row
+      if int(row[8]) > int(row[9]):               #qstart > qend
+        (row[8], row[9]) = (row[9], row[8])       #reverse qstart and qend
+        row[-1] = 0                               #change strand to neg
+      if int(row[11]) > int(row[12]):             #sstart > send
+        (row[11], row[12]) = (row[12], row[11])   #reverse sstart and send
+        row[-1] = 0                               #change strand to neg
+      if row[0] == prev:
+        hit_num += 1
+      else:
+        prev = row[0]
+        hit_num = 1
+      row.append(hit_num)                                      #add count num to row
+      c.execute("INSERT INTO hits VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)", row)
+    conn.commit()
+  conn.close()
+
 
 def flatten_GTF(input):
   feature = input.copy()
@@ -153,7 +184,7 @@ def max_key (dict):
 
 def get_orf(seq, blast_start, blast_end):
   (cds_start, cds_end) = get_orf_coords(seq, blast_start, blast_end)
-  CDS = seq[cds_start:cds_end+1]
+  CDS = seq[cds_start - 1:cds_end]  #Convert from 1 based counting
 
   return CDS 
    
@@ -184,7 +215,7 @@ def get_orf_coords(seq, blast_start, blast_end):
 
   if aa_end == -1:                              #No stop codon found. ORF extends beyond the contig
     warnings.warn("%s: No stop codon. It is likely that the ORF extends beyond the contig (N-terminal fragement)" % seq.id)
-    aa_end = len(aa_tr)
+    aa_end = len(aa_tr) - 1
 
   #determine position of LAST in-frame stop before homologous region (start codon must occur after this position)
   minimum_start = string.rfind(aa_tr, "*", 0, tr_start)  
@@ -205,8 +236,8 @@ def get_orf_coords(seq, blast_start, blast_end):
   #Convert ORF coordinates back to DNA coordinates ( adding frame so numbers correspond to original seq.
   #Could also use trimmed DNA seq, in which case this is unnecessary
   cds_start = aa_start*3+frame
-  cds_end = aa_end*3+frame+2      #Add extra two bases to include all of final codon
-  return (cds_start, cds_end)
+  cds_end = aa_end*3+frame+2       #Add extra two bases to include all of final codon
+  return (cds_start+1, cds_end+1)  #Convert to one-based counting
  
 if __name__ == "__main__":
   #aln = AlignIO.read(sys.argv[1], sys.argv[2])  #call with 2 arguments: filename and format
