@@ -39,15 +39,19 @@ import csv
 from os import path
 from ete2 import Tree  
 from Bio import SeqIO
+from Heathpy import parse_GTF
+import glob
 
 def main(argv):
-  treefile = ''
+  treefolder = ''
   seqfilename = ''
   outfilename = ''
   logfilename = ''
   species_name = ''
+  gtf_filename = ''
+  
   try:
-    opts, args = getopt.getopt(argv,"ht:n:o:l:s:b:",["tree=","infile=","species=", "outfile=","log="])
+    opts, args = getopt.getopt(argv,"ht:n:o:l:s:b:g:",["tree=","infile=","species=", "outfile=","log=", "gtf="])
   except getopt.GetoptError:
     print 'RemoveRedundant.py -t <treefile> -s <sequence_file> -n <species_name> -o <outfile> -l <logfile>'
     sys.exit(2)
@@ -56,7 +60,7 @@ def main(argv):
       print 'RemoveRedundant.py -t <treefile> -s <sequence_file> -n <species_name> -o <outfile> -l <logfile>'
       sys.exit()
     elif opt in ("-t", "--tree"):
-      treefile = arg
+      treefolder = arg
     elif opt in ("-n", "--name"):
       species_name = arg
     elif opt in ("-o", "--outfile"):
@@ -65,49 +69,74 @@ def main(argv):
       logfilename = arg
     elif opt in ("-s", "--sequences"):
       seqfilename = arg
+    elif opt in ("-g", "--gtf"):
+      gtf_filename = arg
 
   #Build database of sequences (if one doesn't already exist)   
   indexfilename = seqfilename + ".inx"
   seq_db = SeqIO.index_db(indexfilename, seqfilename, "fasta")
+  
+  #make dictionary to translate gene_ids back to contig names (this might be slow)
+  if gtf_filename:
+     gene_ids = get_id_dict(gtf_filename)
 
-  #read in tree and root by midpoint
-  try:
-    t = Tree(treefile)
-  except:
-    t = Tree( "(A,B,(C,D));" )
-  R = t.get_midpoint_outgroup()
-  t.set_outgroup(R)
 
-  #Add "species" feature to leaves on tree for easy lookup
-  t = add_species(t)
-
-  #parse tree file to get cluster number
-  cluster_num = path.split(treefile)[1].split(".")[0] #get cluster number
-
-  #cycle through monophyletic groups and select sequence with longest blast hit for each group
-  outfile = open(outfilename, "a")
-  logfile = open(logfilename, "a")
   con = mdb.connect('localhost', 'root', '', 'Selaginella');
   with con:
+    outfile = open(outfilename, "w")
+    logfile = open(logfilename, "w")
     cur = con.cursor()
-    for node in t.get_monophyletic(values=[species_name], target_attr="species"):
-      species_seqs = []
-      for leaf in node:
-        if 'kraussiana' not in leaf.name and 'willdenowii' not in leaf.name:  #exclude reference sequence from seq list
-          species_seqs.append(leaf.name)
-      rep_seq = ''
-      for seq in species_seqs:
-        if rep_seq and get_length(cur, rep_seq) >= get_length(cur, seq.): #saved rep seq longer than current seq
-          pass
-        else:                       #current seq longer (or no saved seq)
-          rep_seq = seq
-      if rep_seq:
-        outfile.write(seq_db.get_raw(rep_seq))
-        for seq in species_seqs:
-          logfile.write("%s\n" % ", ".join([seq, rep_seq, cluster_num]))
+    seq_total = 0
+    for treefile in glob.glob(path.join(treefolder, '*')):
+      if '.nwk' not in treefile:
+        continue 
+      #read in tree and root by midpoint
+      try:
+        t = Tree(treefile)
+      except:
+        continue
+      R = t.get_midpoint_outgroup()
+      try:
+        t.set_outgroup(R)
+      except:
+        pass
+      #Add "species" feature to leaves on tree for easy lookup
+      t = add_species(t)
 
-  logfile.close()
-  outfile.close()
+      #parse tree file to get cluster number
+      cluster_num = path.split(treefile)[1].split(".")[0] #get cluster number
+
+      #cycle through monophyletic groups and select sequence with longest blast hit for each group
+      for node in t.get_monophyletic(values=[species_name], target_attr="species"):
+        species_seqs = []
+        for leaf in node:
+          if 'kraussiana' not in leaf.name and 'willdenowii' not in leaf.name:  #exclude reference sequence from seq list
+            if gtf_filename:
+              try:
+                species_seqs.append(gene_ids[leaf.name])
+              except KeyError:
+                print "%s in %s not found in GTF file" % (leaf.name, treefile)
+            else:
+              species_seqs.append(leaf.name)
+            seq_total += 1
+        rep_seq = ''
+        for seq in species_seqs:
+          if rep_seq and get_length(cur, rep_seq) >= get_length(cur, seq): #saved rep seq longer than current seq
+            pass
+          else:                       #current seq longer (or no saved seq)
+            rep_seq = seq
+        if rep_seq:
+          try:
+            outfile.write(seq_db.get_raw(rep_seq))
+          except KeyError:
+            sys.exit("No sequence %s in %s" % ( rep_seq, seqfilename))
+          for seq in species_seqs:
+            logfile.write("%s\n" % ", ".join([seq, rep_seq, cluster_num]))
+
+
+    print seq_total
+    logfile.close()
+    outfile.close()
 
 def get_length(c, id):
   try:
@@ -131,8 +160,15 @@ def add_species(tree):
      leaf.add_features(species=to_add)
    return tree
    
+def get_id_dict(filename):
+  seqids = {}
+  for line in open(filename, 'r').readlines():
+    feature = parse_GTF(line.split("\t"))
+    if 'gene_id' in feature.keys() and feature['gene_id'] != 'NULL':
+        seqids[feature['gene_id']] = feature['seqid']
+  return seqids
 
 if __name__ == "__main__":
    main(sys.argv[1:])
-
-
+   #import timeit
+   #print(timeit.timeit("main(sys.argv[1:])", setup="from __main__ import main", number=1))
