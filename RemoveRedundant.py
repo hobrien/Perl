@@ -9,10 +9,7 @@ RemoveRedundant.py -t <treefile> -s <seqfile> -n <species_name> -o <outfile> -l 
 
 Options:
  -t treefile
- -s sequence file (fasta format)
  -n species name (KRAUS, UNC, WILD, MOEL)
- -o outfile for representative sequences (appended)
- -l logfile to record summary of which sequences are represented by sequences (appended)
 
 DESCRIPTION
 Takes a treefile and looks for monophyletic groups of sequences from a single species, 
@@ -44,12 +41,10 @@ import glob
 
 def main(argv):
   treefolder = ''
-  logfilename = ''
   gtf_filename = ''
-  nr_seq_filename = ''
-  usage = 'RemoveRedundant.py -f <folder> -g <gtf_file> -l <logfile> -s <nr_seqs>'
+  usage = 'RemoveRedundant.py -f <folder> -g <gtf_file>'
   try:
-    opts, args = getopt.getopt(argv,"hf:l:g:s:",["folder=","log=", "gtf=", "seqs="])
+    opts, args = getopt.getopt(argv,"hf:g:",["folder=", "gtf="])
   except getopt.GetoptError:
     print usage
     sys.exit(2)
@@ -59,106 +54,68 @@ def main(argv):
       sys.exit()
     elif opt in ("-f", "--folder"):
       treefolder = arg
-    elif opt in ("-l", "--log"):
-      logfilename = arg
     elif opt in ("-g", "--gtf"):
       gtf_filename = arg
-    elif opt in ("-s", "--seqs"):
-      nr_seq_filename = arg
 
   #make dictionary to translate gene_ids back to contig names (this might be slow)
   #This will need to be a concatinated file if I'm going to loop over species
   if gtf_filename:
      gene_ids = get_id_dict(gtf_filename)
 
-  #make dictionary of nr seqs (this is probably a temp
-  if nr_seq_filename:
-    nr_seqs = {}
-    nr_seq_fh = open(nr_seq_filename, 'r')
-    if gtf_filename:
-      for seq in nr_seq_fh.readlines():
-        nr_seqs[gene_ids[seq.rstrip()]] = 1
-    else:
-      for seq in nr_seq_fh.readlines():
-        nr_seqs[seq] = 1
-      
-    nr_seq_fh.close()
-
   con = mdb.connect('localhost', 'root', '', 'Selaginella');
   with con:
-    logfile = open(logfilename, "w")
     cur = con.cursor()
-    seq_total = 0
     for treefile in glob.glob(path.join(treefolder, '*')):
       if '.nwk' not in treefile:
         continue
       #read in tree and root by midpoint
       try:
-        t = Tree(treefile)
+        tree = Tree(treefile)
       except:
         continue
-      R = t.get_midpoint_outgroup()
+      root = tree.get_midpoint_outgroup()
       try:
-        t.set_outgroup(R)
+        tree.set_outgroup(root)
       except:
         pass
-      #Add "species" feature to leaves on tree for easy lookup
-      t = add_species(t)
+      for species in ('KRAUS', 'MOEL', 'UNC', 'WILD'):
+        remove_redundant(cur, tree, species, gene_ids)
 
-      #parse tree file to get cluster number
-      cluster_num = path.split(treefile)[1].split(".")[0] #get cluster number
-
-      #open corresponding fasta file and read sequences into dictionary
-      seqfilename = treefile.replace("nwk", "fa")
-      print seqfilename
-      seqfilehandle = open(seqfilename, 'r')
-      seq_dict = SeqIO.to_dict(SeqIO.parse(seqfilehandle, "fasta"))
-      seqfilehandle.close()
-      for key in seq_dict.keys():
-        print key
-
-      #cycle through monophyletic groups and select sequence with longest blast hit for each group
-      for species_name in ('KRAUS', 'MOEL', 'UNC', 'WILD'):
-        for node in t.get_monophyletic(values=[species_name], target_attr="species"):
-          species_seqs = []
-          for leaf in node:
-            if 'kraussiana' not in leaf.name and 'willdenowii' not in leaf.name:  #exclude reference sequence from seq list
-              species_seqs.append(leaf.name)
-              seq_total += 1
-          rep_seq = ''
-          if nr_seq_filename:
-            for seq in species_seqs:
-              if seq in nr_seqs:
-                rep_seq = seq
-              else:
-                del seq_dict[seq]
+def remove_redundant(cur, tree, species, gene_ids):
+    species_leaves = []
+    for leaf in tree:
+        if species in leaf.name:
+          species_leaves.append(leaf)
+    
+    for x in range(len(species_leaves)):
+      for y in range(x+1, len(species_leaves)):
+        if tree.get_distance(species_leaves[x], species_leaves[y], topology_only=True) <=2:
+          seq1 = gene_ids[species_leaves[x].name]
+          seq2 = gene_ids[species_leaves[y].name]
+          if get_length(cur, seq1) >= get_length(cur, seq2):
+            print "replaceing %s with %s" % (seq2, seq1)
+            update_db(cur, seq2, seq1)
           else:
-            for seq in species_seqs:
-              if gtf_filename:
-                try:
-                  seq_name = gene_ids[seq]
-                except KeyError:
-                  sys.exit("%s in %s not found in GTF file" % (seq, treefile))
-              else:
-                seq_name = seq
-              if rep_seq and get_length(cur, rep_seq) >= get_length(cur, seq_name): #saved rep seq longer than current seq
-                del seq_dict[seq]
-              else:                       #current seq longer (or no saved seq)
-                if rep_seq:
-                  del seq_dict[rep_seq]
-                rep_seq = seq
-          for seq in species_seqs:
-            logfile.write("%s\n" % ", ".join([seq, rep_seq, cluster_num]))
-      write_seqs(seq_dict, seqfilename, "fasta")
-      print seq_total
-    logfile.close()
+            print "replaceing %s with %s" % (seq1, seq2)
+            update_db(cur, seq1, seq2)
 
+"""This will find all sequences represented by a redundant sequence and update to the new rep seq, 
+as well as updating the rep seq for the now-redundant seq"""
+def update_db(cur, seqid, repseq):
+  print seqid, repseq
+  cur.execute("Select seqid from Sequences WHERE repseq = %s", (seqid))
+  redundant_seqs =  cur.fetchall()
+  for redundant_seq in redundant_seqs:
+    print redundant_seq
+    cur.execute("UPDATE Sequences SET repseq = %s WHERE seqid = %s", (repseq, redundant_seq[0]))
+  cur.execute("UPDATE Sequences SET repseq = %s WHERE seqid = %s", (repseq, seqid))
+  
 def get_length(c, id):
   try:
-    c.execute('SELECT qstart, qend FROM Blast WHERE qseqid=%s and hitnum=1', (id,))
+    c.execute('SELECT qstart, qend FROM Blast_Selmo_all WHERE qseqid=%s', (id + '_0001',))
     return reduce(lambda x, y: y-x+1,c.fetchone())
   except TypeError:
-    print "'SELECT qstart, qend FROM Blast WHERE qseqid=%s and hitnum=1': No Result" % id
+    print "'SELECT qstart, qend FROM Blast_Selmo_all WHERE qseqid=%s': No Result" % id
     return 0
 
 def add_species(tree): 
@@ -180,7 +137,7 @@ def get_id_dict(filename):
   for line in open(filename, 'r').readlines():
     feature = parse_GTF(line.split("\t"))
     if 'gene_id' in feature.keys() and feature['gene_id'] != 'NULL':
-        seqids[feature['seqid']] = feature['gene_id']
+        seqids[feature['gene_id']] = feature['seqid']
   return seqids
 
 def write_seqs(dict, file, format):
