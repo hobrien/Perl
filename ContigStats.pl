@@ -47,6 +47,7 @@ my $help =0;
 my $min_length = 1;
 my $include_gaps = 0;
 my $print_cumulative = 0;
+my $print_lengths = 0;
 Getopt::Long::Configure ("bundling");
 GetOptions(
 'f|format:s' => \$format,
@@ -54,6 +55,7 @@ GetOptions(
 'm|min:s' => \$min_length,
 'g|gaps' => \$include_gaps,
 'c|cumulative' => \$print_cumulative,
+'l|lengths' => \$print_lengths,
 'h|help|?' => \$help,
 
 );
@@ -108,12 +110,19 @@ foreach (@seqlengths) {
   $cumulative_length += $_;
   if ( $print_cumulative ) { 
     $filename =~ s/_cds//;
+    $filename =~ s/_nr\d?//;
     $filename =~/(.*)\.\w+/;
     print "$1\t$seq_num\t$cumulative_length\n";
   }
+  elsif ( $print_lengths ) { 
+    $filename =~ s/_cds//;
+    $filename =~ s/_nr\d?//i;
+    $filename =~/(.*)\.\w+/;
+    print "$1\t$seq_num\t$_\n";
+  }
   if ( $cumulative_length < ($total_length / 2) ) { $x ++; }
 }
-unless ( $print_cumulative ) {
+unless ( $print_cumulative or $print_lengths) {
   my $n50 = $seqlengths[$x-1];
   my $average = int(($total_length / $num_contigs)+0.5);
   my $HRn50 = $n50;
