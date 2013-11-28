@@ -10,7 +10,7 @@ def main(species, step, logfilename):
   blast_all = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Blast", species + "_Tr_Selmo_all.bl")
   gtf_all = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "GTF", species + "_Tr_1kp.gtf")
   contig_folder = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "ContigClusters")
-  consensus_file = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Assemblies", species + "_nr.fa")
+  consensus_file = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Assemblies", species + "_NR.fa")
   indexed_file = path.join(path.expanduser("~"), "Bioinformatics", "Index", species + "_Tr_cons.fa")
   index = path.join(path.expanduser("~"), "Bioinformatics", "Index", species + "_Tr_cons")
   merge_info = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Mappings", species + "_Tr_cons_unstranded_merge.txt")
@@ -158,7 +158,7 @@ if __name__ == "__main__":
   species = ''
   logfilename = ''
   try:
-    opts, args = getopt.getopt(argv,"hn:s:l:",["name=", "step=","log="])
+    opts, args = getopt.getopt(sys.argv,"hn:s:l:",["name=", "step=","log="])
   except getopt.GetoptError:
     print 'SelaginellaPipeline.py -n <name> [ -s <step> -l <logfile> ]'
     sys.exit(2)
@@ -172,11 +172,13 @@ if __name__ == "__main__":
       logfilename = arg
     elif opt in ("-s", "--step"):
       step = arg
-  if not logfilename:
-    logfilename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Logs", species + "_log.txt")    
   if species:
+    if not logfilename:
+      logfilename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Logs", species + "_log.txt")    
     main(species, step, logfilename)  
   else:  
     for species in ('UNC', 'MOEL', 'WILD', 'KRAUS'):
+      logfilename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "Logs", species + "_log.txt")    
       main(species, step, logfilename)
   exit
+  
