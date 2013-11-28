@@ -41,7 +41,7 @@ foreach(@ARGV) {
   open(my $in, "<", $_);
   my @names;
   while(<$in>) {
-    my @fields = split(/ *\t */, lc($_));
+    my @fields = split(/\s+/, lc($_));
     if ( $fields[0] =~ /\S/ ) {
       $fields[0] =~ s/^\s+//;     #strip out leading whitespace
       $fields[0] =~ s/\s+$//;     #strip out leading whitespace      
@@ -50,7 +50,7 @@ foreach(@ARGV) {
   @names = uniq(@names);
   push(@sets, \@names);
 }
-print "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items\n";
+print "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items (type library(VennDiagram) to view in R)\n";
 
 if ( @sets == 2 ) {
   print "ven.plot<-draw.pairwise.venn(\n";
