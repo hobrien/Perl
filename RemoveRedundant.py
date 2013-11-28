@@ -29,7 +29,7 @@ AUTHOR
  Heath E. O'Brien (heath.obrien-at-gmail-dot-com)
 """
 
-import sys
+import sys, warnings
 import getopt
 import MySQLdb as mdb
 import csv
@@ -57,10 +57,6 @@ def main(argv):
     elif opt in ("-g", "--gtf"):
       gtf_filename = arg
 
-  #make dictionary to translate gene_ids back to contig names (this might be slow)
-  #This will need to be a concatinated file if I'm going to loop over species
-  if gtf_filename:
-     gene_ids = get_id_dict(gtf_filename)
 
   con = mdb.connect('localhost', 'root', '', 'Selaginella');
   with con:
@@ -68,6 +64,9 @@ def main(argv):
     for treefile in glob.glob(path.join(treefolder, '*')):
       if '.nwk' not in treefile:
         continue
+      #read cluster number from filename
+      cluster = int(treefile.split('_')[1].split('.')[0])
+      print cluster
       #read in tree and root by midpoint
       try:
         tree = Tree(treefile)
@@ -78,44 +77,80 @@ def main(argv):
         tree.set_outgroup(root)
       except:
         pass
+      tree = add_species(tree)
+      for leaf in tree:
+        if 'scaffold' in leaf.name:
+          seq = "_".join(leaf.name.split("-")[1:3])
+          try:
+            cur.execute("SELECT clusternum FROM Sequences WHERE seqid = %s", ( seq ))
+            saved_cluster = int(cur.fetchone()[0])
+          except:
+            saved_cluster = cluster
+          if saved_cluster != cluster:
+            warnings.warn("Sequence %s is in the cluster %s tree, but listed as cluster %s in the database" % (seq, cluster, saved_cluster))
+          cur.execute("UPDATE Sequences SET clusternum = %s WHERE seqid = %s", ( cluster, seq ))
       for species in ('KRAUS', 'MOEL', 'UNC', 'WILD'):
-        remove_redundant(cur, tree, species, gene_ids)
+        remove_redundant(cur, tree, species)
 
-def remove_redundant(cur, tree, species, gene_ids):
-    species_leaves = []
-    for leaf in tree:
-        if species in leaf.name:
-          species_leaves.append(leaf)
-    
-    for x in range(len(species_leaves)):
-      for y in range(x+1, len(species_leaves)):
-        if tree.get_distance(species_leaves[x], species_leaves[y], topology_only=True) <=2:
-          seq1 = gene_ids[species_leaves[x].name]
-          seq2 = gene_ids[species_leaves[y].name]
-          if get_length(cur, seq1) >= get_length(cur, seq2):
-            print "replaceing %s with %s" % (seq2, seq1)
-            update_db(cur, seq2, seq1)
+def remove_redundant(cur, tree, species):
+    species_clades = []
+    for node in tree.get_monophyletic(values=[species], target_attr="species"):
+      species_clades.append(node)
+
+    #Allow at most one clade of sequences from other species
+    redundant = {}   
+    for x in range(len(species_clades)):
+      sequences = []
+      for leaf in species_clades[x]:
+        sequences.append(leaf.name)
+      for y in range(x+1, len(species_clades)):
+        if tree.get_distance(species_clades[x], species_clades[y], topology_only=True) <=2:
+          for leaf in species_clades[y]:
+            sequences.append(leaf.name)
+      #print "Finding NR sequences for %s" % ', '.join(sequences)
+      nr_seq = ''
+      for gene_id in sequences:
+        if 'scaffold' in gene_id:
+          seq = "_".join(gene_id.split("-")[1:3])
+        else:
+          cur.execute("SELECT Sequences.seqid, Sequences.repseq FROM Sequences, orfs WHERE orfs.seqid=Sequences.seqid AND orfs.gene_id = %s", (gene_id))
+          try:
+            (seq, repseq) = cur.fetchone()
+          except TypeError:
+            sys.exit("no result for %s" % gene_id)
+          if repseq != 'NR':
+            print "Sequence %s repreesented by %s in the database but present in the tree" % (gene_id, repseq)
+            pass
+        if nr_seq:
+          if get_length(cur, seq) > get_length(cur, nr_seq):
+            update_db(cur, nr_seq, seq)
+            nr_seq = seq
           else:
-            print "replaceing %s with %s" % (seq1, seq2)
-            update_db(cur, seq1, seq2)
+            update_db(cur, seq, nr_seq)
+        else:
+          nr_seq = seq
 
 """This will find all sequences represented by a redundant sequence and update to the new rep seq, 
 as well as updating the rep seq for the now-redundant seq"""
 def update_db(cur, seqid, repseq):
-  print seqid, repseq
-  cur.execute("Select seqid from Sequences WHERE repseq = %s", (seqid))
+  #Get cluster number and species info from db because these columns are indexed for fast retrieval
+  #This assumes that sequences in different clusters are not redundant to each other, which seems safe
+  cur.execute("SELECT clusternum, species FROM Sequences WHERE seqid = %s", (seqid))
+  (clusternum, species) = cur.fetchone()
+  
+  cur.execute("SELECT seqid FROM Sequences WHERE repseq = %s AND clusternum = %s AND species = %s", (seqid, clusternum, species))
   redundant_seqs =  cur.fetchall()
   for redundant_seq in redundant_seqs:
-    print redundant_seq
     cur.execute("UPDATE Sequences SET repseq = %s WHERE seqid = %s", (repseq, redundant_seq[0]))
   cur.execute("UPDATE Sequences SET repseq = %s WHERE seqid = %s", (repseq, seqid))
-  
+  cur.execute("UPDATE Sequences SET repseq = 'NR' WHERE seqid = %s", (repseq))
+
 def get_length(c, id):
   try:
     c.execute('SELECT qstart, qend FROM Blast_Selmo_all WHERE qseqid=%s', (id + '_0001',))
     return reduce(lambda x, y: y-x+1,c.fetchone())
   except TypeError:
-    print "'SELECT qstart, qend FROM Blast_Selmo_all WHERE qseqid=%s': No Result" % id
+    #print "'SELECT qstart, qend FROM Blast_Selmo_all WHERE qseqid=%s': No Result" % id
     return 0
 
 def add_species(tree): 
@@ -131,21 +166,7 @@ def add_species(tree):
        to_add = "WILD"
      leaf.add_features(species=to_add)
    return tree
-   
-def get_id_dict(filename):
-  seqids = {}
-  for line in open(filename, 'r').readlines():
-    feature = parse_GTF(line.split("\t"))
-    if 'gene_id' in feature.keys() and feature['gene_id'] != 'NULL':
-        seqids[feature['gene_id']] = feature['seqid']
-  return seqids
-
-def write_seqs(dict, file, format):
-  fh = open(file, 'w')
-  for seq in dict.values():
-    fh.write(seq.format(format))
-  fh.close()
-  
+     
 if __name__ == "__main__":
    main(sys.argv[1:])
    #import timeit
