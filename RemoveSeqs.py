@@ -23,10 +23,16 @@ def main(argv):
     elif opt in ("-s", "--seqfile"):
        seqfilename = arg
   out_seqs =[]
-  for seq in  SeqIO.parse(seqfilename, "fasta"):
-    if not grep_term in seq.id:
-       out_seqs.append(seq)
-  SeqIO.write(out_seqs, seqfilename, "fasta")
+  if grep_term == 'ALL':
+    for seq in  SeqIO.parse(seqfilename, "fasta"):
+      if not 'KRAUS' in seq.id and not 'MOEL' in seq.id and not 'UNC' in seq.id and not 'WILD' in seq.id:
+        out_seqs.append(seq)
+    SeqIO.write(out_seqs, seqfilename, "fasta")
+  else:
+    for seq in  SeqIO.parse(seqfilename, "fasta"):
+      if not grep_term in seq.id:
+        out_seqs.append(seq)
+    SeqIO.write(out_seqs, seqfilename, "fasta")
   
 if __name__ == "__main__":
    main(sys.argv[1:])
