@@ -7,6 +7,7 @@ files"""
 
 import sys, getopt, csv
 import MySQLdb as mdb
+from Bio import SeqIO
 from os import path
 
 
@@ -32,9 +33,11 @@ def main(argv):
   with con:
     cur = con.cursor()
     if function == 'TAIR':
-      AddTAIR(cur, infilename)
+      add_TAIR(cur, infilename)
+    if function == 'sequences':
+      add_seqs(cur, infilename)
       
-def addTAIR(cur, infilename):
+def add_TAIR(cur, infilename):
   infile = open(infilename, 'r')
   for line in infile.readlines():
     line = line.strip()
@@ -53,6 +56,20 @@ def addTAIR(cur, infilename):
       cur.execute("INSERT INTO tair (locus, description, symbol) VALUES (%s, %s, %s)", (locus, description, symbol))
     except mdb.IntegrityError, e:
       continue
+
+def add_seqs(cur, infilename):
+  species = path.split(infilename)[-1]
+  species = species[:species.find('_')]
+  print species
+  for seq_record in SeqIO.parse(infilename, "fasta"):
+    seq = seq_record.seq
+    #id = seq_record.id
+    id = "_".join(seq_record.id.split("|")[1:3])
+    try:
+      print 'INSERT INTO Sequences(seqid, sequence, species)  VALUES(%s, %s, %s)' % (id,seq,species,)
+      cur.execute('INSERT INTO Sequences(seqid, sequence, species)  VALUES(%s, %s, %s)' , (id,seq,species,))
+    except mdb.IntegrityError, e:
+      warnings.warn("%s" % e)
 
 if __name__ == "__main__":
    main(sys.argv[1:])
