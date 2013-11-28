@@ -38,6 +38,47 @@ def make_db(blastfile, db_name):
     conn.commit()
   conn.close()
 
+def parse_GTF (fields):
+  tags = {}
+  for attribute in fields[8].split(";")[:-1]:
+    attribute = attribute.strip()
+    tags[attribute.split(" ")[0]] = " ".join(attribute.split(" ")[1:]).replace('"','')
+  try:
+    tags['frame'] = int(fields[7])
+  except ValueError:
+    if fields[7] == '.':
+      tags['frame'] = 'NULL'
+    else:
+      sys.exit("frame %s not recognized. Must be 1, 2, 3 or ." % fields[5]) 
+  if fields[6] == '-' or fields[6] == 0 or fields[6] == -1:
+    tags['strand'] = 0
+  elif fields[6] == '+' or fields[6] == 1:
+    tags['strand'] = 1
+  elif fields[6] == '.':
+    tags['strand'] = 'NULL'
+  else:  
+    sys.exit("strand %s not recognized. Must one of +, -, 1, -1 or 0" % fields[6])      
+  try:
+    tags['score'] = float(fields[5])
+  except ValueError:
+    if fields[5] == '.':
+      tags['score'] = 'NULL'
+    else:
+      sys.exit("score %s not recognized. Must be a number" % fields[5])
+  try:
+    tags['end'] = int(fields[4])
+  except ValueError:
+    sys.exit("score %s not recognized. Must be a positive integer" % fields[4])
+  try:
+    tags['start'] = int(fields[3])
+  except ValueError:
+    sys.exit("score %s not recognized. Must be a positive integer" % fields[3])
+  tags['feature'] = fields[2]
+  tags['source'] = fields[1]
+  tags['seqid'] = fields[0]
+  return tags
+
+
 
 def flatten_GTF(input):
   feature = input.copy()
@@ -68,12 +109,23 @@ def flatten_GTF(input):
   except KeyError:
     sys.exit("no end tag")
   try:
-    fields.append(feature['score'])
+    if feature['score']:
+      fields.append(feature['score'])
+    else:
+      fields.append('.')
+    
     del feature['score']
   except KeyError:
     sys.exit("no score tag")
   try:
-    fields.append(feature['strand'])
+    if int(feature['strand']) == 0:
+      fields.append('-')
+    elif int(feature['strand']) == 1:
+      fields.append('+')
+    elif feature['strand'] == '.':
+      fields.append('.')
+    else:
+      sys.exit("strand %s not recognized" % feature['strand'])
     del feature['strand']
   except KeyError:
     sys.exit("no strand tag")
@@ -89,7 +141,7 @@ def flatten_GTF(input):
   for key in keys:
     attributes = attributes + '%s "%s"; ' % (key, feature[key])
   fields.append(attributes)
-  return fields
+  return "\t".join(map(str, fields))
 
 def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
     import warnings
