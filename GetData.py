@@ -3,6 +3,7 @@
 import sys, getopt, csv
 import MySQLdb as mdb
 from os import path
+from Heathpy import flatten_GTF
 
 
 def main(argv):
@@ -28,8 +29,12 @@ def main(argv):
     cur = con.cursor()
     if function == 'TAIR':
       get_TAIR(cur, infilename)
+    elif function == 'sequences':
+      get_seqs(cur, infilename)
+    elif function == 'GTF':
+      get_gtf(cur, infilename)
       
-def get_TAIR:
+def get_TAIR(cur, infilename):
   infile = open(infilename, 'r')
   for line in infile.readlines():
     line = line.strip()
@@ -43,6 +48,34 @@ def get_TAIR:
     for row in cur.fetchall():
       print '\t'.join(map(str, row))
   
+def get_seqs(cur, name):
+  cur.execute("SELECT seqid, sequence FROM Sequences WHERE repseq = 'NR' AND species = %s", (species))
+  for (seqid, seq) in cur.fetchall():
+    print ">%s" % seqid
+    print seq
+    
+def get_gtf(cur, name):
+  cur.execute("SELECT seqid, sequence FROM Sequences WHERE repseq = 'NR' AND species = %s", (species))
+  for (seqid, seq) in cur.fetchall():
+    cur.execute("SELECT * FROM orfs WHERE seqid = %s", (seqid,))
+    for row in cur2.fetchall():
+      gtf = { 'seqname': row[1],
+              'source': row[2],
+              'feature': row[3],
+              'start': row[4],
+              'end': row[5],
+              'strand': row[6],
+              'frame': row[7],
+              'score': row[8],
+              'gene_id': row[9],
+              'transcript_id': row[10]
+            }
+      if row[11]:
+        gtf['note'] = row[11]
+      print flatten_GTF(gtf)  
+                  
+
+
 
 if __name__ == "__main__":
    main(sys.argv[1:])
