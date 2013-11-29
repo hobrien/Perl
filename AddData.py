@@ -36,6 +36,8 @@ def main(argv):
       add_TAIR(cur, infilename)
     if function == 'sequences':
       add_seqs(cur, infilename)
+   if function == 'orthologs':
+      add_ortholog_info(cur, infilename)
       
 def add_TAIR(cur, infilename):
   infile = open(infilename, 'r')
@@ -70,6 +72,25 @@ def add_seqs(cur, infilename):
       cur.execute('INSERT INTO Sequences(seqid, sequence, species)  VALUES(%s, %s, %s)' , (id,seq,species,))
     except mdb.IntegrityError, e:
       warnings.warn("%s" % e)
+
+def add_ortholog_info(cur, infilename):
+  infile = open(infilename, 'r')
+  for line in infile.readlines():
+    line = line.strip()
+    EFJ = line.split('\t')[1]
+    if EFJ == 'Ensembl Transcript ID': #header row
+      continue
+    try:
+      ATH = line.split('\t')[4]
+    except IndexError:
+      continue
+    cur.execute("SELECT clusternum FROM sequences WHERE seqid = %s", (EFJ))
+    try:
+      clusternum = cur.fetchone()[0]
+    except:
+      continue
+    cur.execute("UPDATE sequences SET clusternum = %s WHERE seqid = %s", (clusternum, ATH))
+    print "UPDATE sequences SET clusternum = %s WHERE seqid = '%s'" % (clusternum, ATH)
 
 if __name__ == "__main__":
    main(sys.argv[1:])
