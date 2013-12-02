@@ -17,9 +17,13 @@ def main():
 #      end = int(end)
       strand = int(strand)
       print seqid
-      if int(gene_id.split('_')[1][1:]) != clusternum:
-        print "skipping %s" % gene_id.split('_')[1][1:]
+      try:
+        if int(gene_id.split('_')[1][1:]) != clusternum:
+          raise ValueError
+      except ValueError:
+        print "skipping %s" % gene_id
         continue
+     
       seq = seq[start-1:end]
       if strand == 1:
         name = '_'.join(map(str, [seqid, start, end]))
@@ -40,4 +44,4 @@ def rev_com(seq):
   return seq
   
 if __name__ == "__main__":
-   main()
+  main()
