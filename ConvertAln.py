@@ -115,6 +115,6 @@ if __name__ == "__main__":
     system('open %s' % path.join(path.expanduser("~"), 'Perl', 't', 'ConvertAln.t.aln'))
 
   
-else:
-  main(sys.argv[1:])
+  else:
+    main(sys.argv[1:])
 
