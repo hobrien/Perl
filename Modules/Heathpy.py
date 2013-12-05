@@ -306,7 +306,42 @@ def get_orf_coords(seq, blast_start, blast_end):
   cds_start = aa_start*3+start_frame
   cds_end = (aa_end*3)+end_frame+2       #Add extra two bases to include all of final codon
   return (cds_start+1, cds_end+1)  #Convert to one-based counting
- 
+
+
+
+"""This function will bin numbers between 3.8 and 23.8 into 100 bins and return a colour 
+corresponding to that bin.
+
+colours based on the r command "colorRampPalette(c("forest green", "yellow", "red"))(100)"
+
+number range corresponds to the results I got for the Variance Stabalizing Transformation in DESeq"""
+
+def get_colour(value):
+  import numpy as np
+
+  bins = np.array([3.8, 4.0, 4.2, 4.4, 4.6, 4.8, 5., 5.2, 5.4, 5.6, 5.8, 6., 6.2, 6.4, 6.6, 6.8, 7.0, 
+          7.2, 7.4, 7.6, 7.8, 8.0, 8.2, 8.4, 8.6, 8.8, 9.0, 9.2, 9.4, 9.6, 9.8, 10, 10.2, 10.4, 
+          10.6, 10.8, 11.0, 11.2, 11.4, 11.6, 11.8, 12.0, 12.2, 12.4, 12.6, 12.8, 13.0, 13.2,
+          13.4, 13.6, 13.8, 14.0, 14.2, 14.4, 14.6, 14.8, 15.0, 15.2, 15.4, 15.6, 15.8, 16.0, 
+          16.2, 16.4, 16.6, 16.8, 17.0, 17.2, 17.4, 17.6, 17.8, 18.0, 18.2, 18.4, 18.6, 18.8,
+          19.0, 19.2, 19.4, 19.6, 19.8, 20.0, 20.2, 20.4, 20.6, 20.8, 21.0, 21.2, 21.4, 21.6, 
+          21.8, 22.0, 22.2, 22.4, 22.6, 22.8, 23.0, 23.2, 23.4, 23.6])
+        
+  colours = ("#228B22", "#268D21", "#2A8F20", "#2F921F", "#33941F", "#38961E", "#3C991D", "#419B1D", "#459D1C", "#4AA01B", "#4EA21B",
+             "#53A41A", "#57A719", "#5CA919", "#60AB18", "#64AE17", "#69B017", "#6DB216", "#72B515", "#76B714", "#7BB914", "#7FBC13",
+             "#84BE12", "#88C012", "#8DC311", "#91C510", "#96C710", "#9ACA0F", "#9FCC0E", "#A3CE0E", "#A7D10D", "#ACD30C", "#B0D50C",
+             "#B5D80B", "#B9DA0A", "#BEDD09", "#C2DF09", "#C7E108", "#CBE407", "#D0E607", "#D4E806", "#D9EB05", "#DDED05", "#E1EF04",
+             "#E6F203", "#EAF403", "#EFF602", "#F3F901", "#F8FB01", "#FCFD00", "#FFFC00", "#FFF700", "#FFF200", "#FFEC00", "#FFE700",
+             "#FFE200", "#FFDD00", "#FFD800", "#FFD300", "#FFCE00", "#FFC800", "#FFC300", "#FFBE00", "#FFB900", "#FFB400", "#FFAF00",
+             "#FFA900", "#FFA400", "#FF9F00", "#FF9A00", "#FF9500", "#FF9000", "#FF8B00", "#FF8500", "#FF8000", "#FF7B00", "#FF7600",
+             "#FF7100", "#FF6C00", "#FF6700", "#FF6100", "#FF5C00", "#FF5700", "#FF5200", "#FF4D00", "#FF4800", "#FF4200", "#FF3D00",
+             "#FF3800", "#FF3300", "#FF2E00", "#FF2900", "#FF2400", "#FF1E00", "#FF1900", "#FF1400", "#FF0F00", "#FF0A00", "#FF0500",
+             "#FF0000")
+
+  x = np.array([value]) 
+  inds = np.digitize(x, bins)
+  return colours[inds] 
+
 if __name__ == "__main__":
   #aln = AlignIO.read(sys.argv[1], sys.argv[2])  #call with 2 arguments: filename and format
   #print smart_consensus(pad_ends(aln))
