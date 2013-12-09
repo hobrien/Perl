@@ -6,7 +6,8 @@ This will colour-code taxa on trees according to the Selaginella species
 
 import sys, getopt, string, warnings
 import MySQLdb as mdb
-from ete2 import Tree, TreeStyle, TextFace, NodeStyle  
+from ete2 import Tree, TreeStyle, TextFace, NodeStyle, ImgFace
+from os import path  
 from Heathpy import get_colour
 
 def main(argv):
@@ -40,18 +41,26 @@ def main(argv):
       name = leaf.name
       if name.find('KRAUS') > -1:
         color = 'Green'  
-      elif name.find('kraussiana') > -1:
-        color = 'SpringGreen'  
       elif name.find('MOEL') > -1:
         color = 'Red'  
       elif name.find('UNC') > -1:
         color = 'Orange'  
       elif name.find('WILD') > -1:
         color = 'MediumBlue'  
-      elif name.find('willdenowii') > -1:
-        color = 'SteelBlue'  
       else:
-        color = 'Black'
+        cur.execute("Select Species.Genus, Species.Species FROM Species, Sequences WHERE Species.abbreviation = Sequences.species AND Sequences.seqid = %s", name)
+        try:
+          (genus, species) = cur.fetchone()
+          leaf.name = '_'.join((genus[0], species, leaf.name))
+        except TypeError, e:
+          print e
+          continue
+        if leaf.name.find('kraussiana') > -1:
+          color = 'LightGreen'  
+        elif leaf.name.find('willdenowii') > -1:
+          color = 'SteelBlue' 
+        else:
+          color = 'Black'
       label = TextFace(leaf.name, fgcolor=color)
       #label.background.color = color
       leaf.name = label
@@ -67,10 +76,15 @@ def main(argv):
           if vsd[x] == 'none':
             continue
           expression_label= TextFace(' %s ' % normalized[x])
-          expression_label.background.color = get_colour(vsd[x])   
+          expression_label.background.color = get_colour(vsd[x])
+          expression_label.margin_left, expression_label.margin_right, expression_label.margin_top, expression_label.margin_bottom = 1,1,2,1
+          # This isn't working right : ( expression_label.border.width=1
           leaf.add_face(expression_label, column = x+2, position="branch-right")
       except TypeError:
        continue
+
+
+
     draw_tree(tree, outfilename)   
 
 def draw_tree(tree, file):
@@ -86,22 +100,20 @@ def draw_tree(tree, file):
     ts.branch_vertical_margin = 1
     ts.scale = 1500
     ts.show_leaf_name = False
+    #ts.show_branch_support = True
+    leg_file = path.join(path.expanduser('~'), 'Perl', 'Modules', 'TreeLegend.png')   
+    leg_face= ImgFace(img_file=leg_file)
+    leg_face.margin_left, leg_face.margin_top = 5, 5
+    ts.legend.add_face(leg_face, column=1)
+    ts.legend_position=1
+
+    title_face = TextFace(text=file.split('.')[0])
+    title_face.margin_left, title_face.margin_top = 10, 5
+    ts.title.add_face(title_face, column=1)
+    (ts.margin_left, ts.margin_right) = (5,5)
     tree.render(file, tree_style=ts, w=3000, units='mm')
     #tree.show(tree_style=ts)
-    
-def add_faces(leaf, label_info):
-      colours = get_colours(label_info)
-      y = 0
-      for x in range(len(label_info)):
-        if x < len(label_info) - 1:
-          label_info[x] += ','
-        label = TextFace(label_info[x])
-        label.margin_left = 5
-        label.fgcolor = colours[x]
-        if x > 1 and x % 3 == 0:
-          y += 3
-        leaf.add_face(label, column=x-y+1, position="branch-right")
-      
+          
 def get_colours(label_info):
   colours = []
   for label in label_info:
@@ -140,39 +152,10 @@ def add_sig(tree):
   sig["size"] = 5
   sig["fgcolor"] = "black"
   for node in tree.traverse():
-    if node.support < 0.9 or node.is_leaf():
+    if node.support < 0.9 or node.is_leaf() or node.is_root():
       node.set_style(non_sig)
     else:
       node.set_style(sig)
 
-def combine_info(entries):
-  host_counts = {}                   #Can include species names of free-living strains
-  for (host, species) in entries:
-    if host and host != "free-living":
-      info = host
-    else:
-      info = species
-    if info in host_counts.keys():
-      host_counts[info] += 1
-    else:
-      host_counts[info] = 1
-  out_list = []
-  included_genera = []
-  names = host_counts.keys()
-  names.sort()
-  for name in names:
-      count = host_counts[name]
-      genus = name.split(' ')[0]
-      if genus in included_genera:
-        name = name.replace(genus,  genus[0] + '.')
-      else:
-        included_genera.append(genus)
-      if count > 1:  
-        out_list.append("%s (%s)" % ( name, count))
-      else:
-        out_list.append(name)
-
-  return out_list
-  
 if __name__ == "__main__":
    main(sys.argv[1:])
