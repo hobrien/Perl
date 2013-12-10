@@ -36,6 +36,10 @@ def main(argv):
   with con:
     cur = con.cursor()
     seqs = get_seqs(cur, clusternum)
+    num_tax = len(seqs)
+    if num_tax < 2:
+      print "cluster %s contains %s seqs. At least 2 required for alignment" % (clusternum, num_tax)
+      return 1
     SeqIO.write(seqs, seq_file, "fasta")
     print "translatorx_vLocal.pl -i %s -p F" % seq_file
     system("translatorx_vLocal.pl -i %s -p F" % seq_file)
@@ -48,7 +52,13 @@ def main(argv):
     system("ConvertAln.py -i %s -f phylip -x fasta" % tempfile)
     system("rm %s" % tempfile)
     tempfile += '.phy'
-    system("phyml -i %s" % tempfile)
+    if num_tax < 3:
+      print "cluster %s contains %s seqs. At least 2 required for tree bulding" % (clusternum, num_tax)
+      return 1
+    elif num_tax < 50:
+      system("phyml  --quiet --no_memory_check -i %s" % tempfile)
+    else:
+      system("phyml  --quiet --no_memory_check -o n -b 0 -i %s" % tempfile)      
     system("rm %s" % tempfile)
     system("mv %s %s" % (tempfile + '_phyml_tree.txt', tree_file))
     system("rm %s" % tempfile + '_phyml_stats.txt')
@@ -58,30 +68,33 @@ def get_seqs(cur, clusternum):
   seqs = []
   cur.execute("SELECT seqid, sequence FROM Sequences WHERE repseq = 'NR' AND clusternum = %s", clusternum)
   for (seqid, sequence) in cur.fetchall():
-    seq_record = SeqRecord(Seq(sequence), id=seqid)
+    seq_record = SeqRecord(Seq(sequence), id=seqid, description = '')
     if seqid[:4] in ('KRAU', 'MOEL', 'UNCc', 'WILD'):  #BLUELEAF sequence. Need to remove non-coding portions
       cur.execute("SELECT start, end, strand, gene_id FROM orfs WHERE seqid = %s", seqid)
       for (start, end, strand, gene_id) in cur.fetchall():
-        strand = int(strand)
-        print seqid
-        try:
-          if int(gene_id.split('_')[1][1:]) != clusternum:
-            print int(gene_id.split('_')[1][1:])
-            raise ValueError
-        except ValueError:
-          print "skipping %s" % gene_id
+        strand = int(strand)        
+        #Check that gene_id is properly formatted (with cluster 
+        if gene_id.split('_')[0] not in seqid or gene_id.split('_')[1][0] != 'c': #gene_id not properly formated
+          print "skipping %s (gene_id %s)" % (seqid, gene_id)
           continue
+        if int(gene_id.split('_')[1][1:]) != clusternum: #gene_id properly formatted, but not in agreement with clusternum
+          print "skipping %s (gene_id %s)" % (seqid, gene_id)
+          continue        
         seq_record = seq_record[start-1:end]
         if strand == 1:
           name = '_'.join(map(str, [seqid, start, end]))
         elif strand == 0:
           name = '_'.join(map(str, [seqid, end, start]))
-          seq_record = rev_com(seq_record)
+          seq_record = seq_record.reverse_complement()
+          seq_record.description = ''
         else:
           sys.exit('strand %s not recognized' % strand)
         seq_record.id = name 
-    seq_record.description = ''
-    seqs.append(seq_record)
+        #seq_record.description = ''
+        seqs.append(seq_record)
+    else:
+      seqs.append(seq_record)
+    
   return seqs
 
 def add_exset(file, trimal_res):
@@ -91,7 +104,7 @@ def add_exset(file, trimal_res):
   incl = map(int, incl)
   aln = open(file, 'r')
   for line in aln.readlines():
-    match = re.search( r"nchar= *(\d+);", line, re.I)
+    match = re.search( r"nchar *= *(\d+);", line, re.I)
     if match:
       length = int(match.group(1))
       break
@@ -119,6 +132,16 @@ def as_range(iterable):
   
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+  if 'all' in sys.argv:
+    cluster_index = sys.argv.index('all')
+    con = mdb.connect('localhost', 'root', '', 'Selaginella')
+    with con:
+      cur = con.cursor()
+      cur.execute("SELECT clusternum FROM Sequences WHERE clusternum > 0 AND clusternum < 10 GROUP BY clusternum")
+      for clusternum in cur.fetchall():
+        sys.argv[cluster_index] = clusternum[0]
+        main(sys.argv[1:])
+  else:
+    main(sys.argv[1:])
 
 
