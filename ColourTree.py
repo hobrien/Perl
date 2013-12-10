@@ -61,9 +61,7 @@ def main(argv):
           color = 'SteelBlue' 
         else:
           color = 'Black'
-      label = TextFace(leaf.name, fgcolor=color)
-      #label.background.color = color
-      leaf.name = label
+      label = TextFace(leaf.name, fgcolor=color, fsize=16)
       leaf.add_face(label, column = 0, position="branch-right")
       leaf.add_face(TextFace(' '), column = 1, position="branch-right")
       name = '_'.join(name.split('_')[:-2])
@@ -75,7 +73,7 @@ def main(argv):
         for x in range(4):
           if vsd[x] == 'none':
             continue
-          expression_label= TextFace(' %s ' % normalized[x])
+          expression_label= TextFace(' %s ' % normalized[x], fsize=16)
           expression_label.background.color = get_colour(vsd[x])
           expression_label.margin_left, expression_label.margin_right, expression_label.margin_top, expression_label.margin_bottom = 1,1,2,1
           # This isn't working right : ( expression_label.border.width=1
@@ -98,7 +96,7 @@ def draw_tree(tree, file):
     add_sig(tree)
     ts = TreeStyle()
     ts.branch_vertical_margin = 1
-    ts.scale = 1500
+    #ts.scale = 1500
     ts.show_leaf_name = False
     #ts.show_branch_support = True
     leg_file = path.join(path.expanduser('~'), 'Perl', 'Modules', 'TreeLegend.png')   
@@ -111,7 +109,7 @@ def draw_tree(tree, file):
     title_face.margin_left, title_face.margin_top = 10, 5
     ts.title.add_face(title_face, column=1)
     (ts.margin_left, ts.margin_right) = (5,5)
-    tree.render(file, tree_style=ts, w=3000, units='mm')
+    tree.render(file, tree_style=ts, w=6000, units='mm')
     #tree.show(tree_style=ts)
           
 def get_colours(label_info):
