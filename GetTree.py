@@ -16,7 +16,7 @@ def main(argv):
   last = 53127
   usage = "GetTree.py -d <dirname> -c <cluster> | ( -f <first> -l <last> )"
   try:
-     opts, args = getopt.getopt(argv,"hd:f:l:",["cluster=", "dir=", "first=", "last="])
+     opts, args = getopt.getopt(argv,"hd:f:l:c:",["cluster=", "dir=", "first=", "last="])
   except getopt.GetoptError, e:
      print e
      print usage
@@ -121,8 +121,13 @@ def get_seqs(cur, clusternum):
         seq_record.id = name 
         #seq_record.description = ''
         seqs.append(seq_record)
-    else:
+    elif seqid[:3] in ('EFJ', 'Sel', 'ATH'):  #other non 1KP sequences:
       seqs.append(seq_record)
+  cur.execute("SELECT sequences.seqid, sequences.sequence FROM cluster_num, sequences WHERE sequences.seqid = cluster_num.seqid AND cluster_num.cluster = %s", clusternum)
+  for (seqid, sequence) in cur.fetchall():
+    seq_record = SeqRecord(Seq(sequence), id=seqid, description = '')
+    seqs.append(seq_record)
+    
     
   return seqs
 
