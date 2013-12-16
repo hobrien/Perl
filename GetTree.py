@@ -57,10 +57,12 @@ def main(argv):
     print "making alignments"
     index = -1
     for row in rows:
+      clusternum = row[0]
       index += 1
       if num_seqs[index] < 2:
-        print "cluster %s contains %s seqs. At least 2 required for alignment" % (clusternum, num_tax)
+        print "cluster %s contains %s seqs. At least 2 required for alignment" % (clusternum, num_seqs[index])
         continue
+      seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
       translatorx_file = path.join(dirname, 'translatorx_res.nt_ali.fasta')
       aln_file = path.join(dirname, 'Cluster_' + str(clusternum) + '_aln.fa')
       nexus_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nex')
@@ -74,13 +76,14 @@ def main(argv):
     print "Making Trees"
     index = -1
     for row in rows:
+      clusternum = row[0]
       index += 1          
       aln_file = path.join(dirname, 'Cluster_' + str(clusternum) + '_aln.fa')
       phy_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.phy')
       tree_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nwk')
       pdf_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.pdf')
-      if num_seqs[index] < 3:
-        print "cluster %s contains %s seqs. At least 2 required for tree bulding" % (clusternum, num_tax)
+      if num_seqs[index] < 4:
+        print "cluster %s contains %s seqs. At least 4 required for tree bulding" % (clusternum, num_seqs[index])
         continue
       system("ConvertAln.py -i %s -f phylip -x fasta -o %s" % (aln_file, phy_file))
       system("rm %s" % aln_file)
