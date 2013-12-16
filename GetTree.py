@@ -12,7 +12,9 @@ import subprocess
 def main(argv):
   dirname = ''
   cluster = ''
-  usage = "GetTree.py -c <cluster> -d <dirname>"
+  first = 1
+  last = 53127
+  usage = "GetTree.py -d <dirname> -c <cluster> | ( -f <first> -l <last>"
   try:
      opts, args = getopt.getopt(argv,"hc:d:",["cluster", "dir="])
   except getopt.GetoptError:
@@ -24,45 +26,71 @@ def main(argv):
         sys.exit()
      elif opt in ("-c", "--cluser"):
         clusternum = int(arg)
-     elif opt in ("-f", "--file"):
+     elif opt in ("-f", "--first"):
+        first = int(arg)
+     elif opt in ("-l", "--last"):
+        last = int(arg)
+     elif opt in ("-d", "--dir"):
         dirname = arg
-  tempfile = path.join(dirname, 'temp1')
-  seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
-  aln_file = path.join(dirname, 'translatorx_res.nt_ali.fasta')
-  nexus_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nex')
-  tree_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nwk')
-  pdf_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.pdf')
+
   con = mdb.connect('localhost', 'root', '', 'Selaginella')
   with con:
     cur = con.cursor()
-    seqs = get_seqs(cur, clusternum)
-    num_tax = len(seqs)
-    if num_tax < 2:
-      print "cluster %s contains %s seqs. At least 2 required for alignment" % (clusternum, num_tax)
-      return 1
-    SeqIO.write(seqs, seq_file, "fasta")
-    print "translatorx_vLocal.pl -i %s -p F" % seq_file
-    system("translatorx_vLocal.pl -i %s -p F" % seq_file)
-    print "ConvertAln.py -i %s -o %s -f nexus" % (aln_file, nexus_file)
-    system("ConvertAln.py -i %s -o %s -f nexus" % (aln_file, nexus_file))
-    proc = subprocess.Popen(["trimal -gappyout -in %s -out %s -colnumbering" % (aln_file, tempfile)], stdout=subprocess.PIPE, shell=True)
-    (trimal_res, err) = proc.communicate()
-    add_exset(nexus_file, trimal_res)
-    system("rm %s" % path.join(dirname, 'translatorx_*'))
-    system("ConvertAln.py -i %s -f phylip -x fasta" % tempfile)
-    system("rm %s" % tempfile)
-    tempfile += '.phy'
-    if num_tax < 3:
-      print "cluster %s contains %s seqs. At least 2 required for tree bulding" % (clusternum, num_tax)
-      return 1
-    elif num_tax < 50:
-      system("phyml  --quiet --no_memory_check -i %s" % tempfile)
+    if clusternum:
+      first = clusternum - 1
+      last = clusternum + 1
     else:
-      system("phyml  --quiet --no_memory_check -o n -b 0 -i %s" % tempfile)      
-    system("rm %s" % tempfile)
-    system("mv %s %s" % (tempfile + '_phyml_tree.txt', tree_file))
-    system("rm %s" % tempfile + '_phyml_stats.txt')
-    system("ColourTree.py -t %s -o %s" % (tree_file, pdf_file))
+      first -= 1
+      last += 1  
+    cur.execute("SELECT clusternum FROM Sequences WHERE clusternum > %s AND clusternum < %s GROUP BY clusternum", (first, last))
+    rows = cur.fetchall()
+    num_seqs = []
+    print "Writing Sequences to file"
+    for row in rows:
+      clusternum = row[0]
+      seqs = get_seqs(cur, clusternum)
+      seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
+      SeqIO.write(seqs, seq_file, "fasta")
+      num_seqs.append(len(seqs))
+    
+    print "making alignments"
+    index = -1
+    for row in rows:
+      index += 1
+      if num_seqs[index] < 2:
+        print "cluster %s contains %s seqs. At least 2 required for alignment" % (clusternum, num_tax)
+        continue
+      translatorx_file = path.join(dirname, 'translatorx_res.nt_ali.fasta')
+      aln_file = path.join(dirname, 'Cluster_' + str(clusternum) + '_aln.fa')
+      nexus_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nex')
+      system("translatorx_vLocal.pl -i %s -p F" % seq_file)
+      system("ConvertAln.py -i %s -o %s -f nexus" % (translatorx_file, nexus_file))
+      proc = subprocess.Popen(["trimal -gappyout -in %s -out %s -colnumbering" % (translatorx_file, aln_file)], stdout=subprocess.PIPE, shell=True)
+      (trimal_res, err) = proc.communicate()
+      add_exset(nexus_file, trimal_res)
+      system("rm %s" % path.join(dirname, 'translatorx_*'))
+
+    print "Making Trees"
+    index = -1
+    for row in rows:
+      index += 1          
+      aln_file = path.join(dirname, 'Cluster_' + str(clusternum) + '_aln.fa')
+      phy_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.phy')
+      tree_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nwk')
+      pdf_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.pdf')
+      if num_seqs[index] < 3:
+        print "cluster %s contains %s seqs. At least 2 required for tree bulding" % (clusternum, num_tax)
+        continue
+      system("ConvertAln.py -i %s -f phylip -x fasta -o %s" % (aln_file, phy_file))
+      system("rm %s" % aln_file)
+      if num_seqs[index] < 50:
+        system("phyml  --quiet --no_memory_check -i %s" % phy_file)
+      else:
+        system("phyml  --quiet --no_memory_check -o n -b 0 -i %s" % phy_file)      
+      system("rm %s" % phy_file)
+      system("mv %s %s" % (phy_file + '_phyml_tree.txt', tree_file))
+      system("rm %s" % phy_file + '_phyml_stats.txt')
+      system("ColourTree.py -t %s -o %s" % (tree_file, pdf_file))
 
 def get_seqs(cur, clusternum):
   seqs = []
@@ -132,16 +160,6 @@ def as_range(iterable):
   
 
 if __name__ == "__main__":
-  if 'all' in sys.argv:
-    cluster_index = sys.argv.index('all')
-    con = mdb.connect('localhost', 'root', '', 'Selaginella')
-    with con:
-      cur = con.cursor()
-      cur.execute("SELECT clusternum FROM Sequences WHERE clusternum > 0 AND clusternum < 10 GROUP BY clusternum")
-      for clusternum in cur.fetchall():
-        sys.argv[cluster_index] = clusternum[0]
-        main(sys.argv[1:])
-  else:
-    main(sys.argv[1:])
+  main(sys.argv[1:])
 
 
