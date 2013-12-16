@@ -11,13 +11,14 @@ import subprocess
 
 def main(argv):
   dirname = ''
-  cluster = ''
+  clusternum = ''
   first = 1
   last = 53127
-  usage = "GetTree.py -d <dirname> -c <cluster> | ( -f <first> -l <last>"
+  usage = "GetTree.py -d <dirname> -c <cluster> | ( -f <first> -l <last> )"
   try:
-     opts, args = getopt.getopt(argv,"hc:d:",["cluster", "dir="])
-  except getopt.GetoptError:
+     opts, args = getopt.getopt(argv,"hd:f:l:",["cluster=", "dir=", "first=", "last="])
+  except getopt.GetoptError, e:
+     print e
      print usage
      sys.exit(2)
   for opt, arg in opts:
