@@ -42,6 +42,7 @@ foreach(@ARGV) {
   my @names;
   while(<$in>) {
     my @fields = split(/\s+/, lc($_));
+    if ( @fields == 0 ) { next; }
     if ( $fields[0] =~ /\S/ ) {
       $fields[0] =~ s/^\s+//;     #strip out leading whitespace
       $fields[0] =~ s/\s+$//;     #strip out leading whitespace      
@@ -61,7 +62,10 @@ elsif ( @sets == 3 ) {
 elsif ( @sets == 4 ) {
   print "venn.plot <- draw.quad.venn(\n";
 }
-else { die "This script currently only produces tri- and quar-Venn plots\n"; }
+elsif ( @sets == 5 ) {
+  print "venn.plot <- draw.quintuple.venn(\n";
+}
+else { die "This script currently only produces pariwise to quintuple Venn plots\n"; }
 
 for (my $i = 0; $i < @sets; $i ++) { 
   print "  area", $i+1, " = ", scalar(@{$sets[$i]}), ",\n";
@@ -98,6 +102,20 @@ for (my $i = 0; $i < @sets - 3; $i ++) {
     }
   }
 }
+
+for (my $i = 0; $i < @sets - 4; $i ++) {
+  for (my $j = $i + 1; $j < @sets - 3; $j ++ ) {
+    for ( my $k = $j + 1; $k < @sets - 2; $k ++ ) {
+      for ( my $l = $k + 1; $l < @sets -1; $l ++ ) {
+        for ( my $m = $l + 1; $m < @sets; $m ++ ) {    
+          my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k], $sets[$l], $sets[$m]);
+          print "  n", $i+1, $j+1, $k+1, $l+1, $m+1, " = ", scalar($lc->get_intersection), ",\n";
+        }
+      }
+    }
+  }
+}
+
 print "  category = c('", join("','", @files), "'),\n";
 if ( @sets == 2) {
   print "  fill = c('blue', 'red'),
@@ -107,10 +125,15 @@ elsif ( @sets == 3 ) {
   print "  fill = c('blue', 'red', 'green'),
   cat.col = c('blue', 'red', 'green'),\n";
 }
-else {
+elsif ( @sets == 4 ) {
   print "  fill = c('orange', 'red', 'green', 'blue'),
   cat.col = c('orange', 'red', 'green', 'blue'),\n";
 }
+else {
+  print "  fill = c('orange', 'red', 'green', 'blue', 'purple'),
+  cat.col = c('orange', 'red', 'green', 'blue', 'purple'),\n";
+}
+
 print "  lty = 'blank',
   cex = 2,
   cat.cex = 1.75,
