@@ -1,100 +1,14 @@
 #!/usr/local/bin/python
 
-import sys, getopt, csv
+import sys, getopt
 import MySQLdb as mdb
-from os import path, system
-from Heathpy import flatten_GTF
+from os import path
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 import subprocess
+import Queue, threading, time
 
-def main(argv):
-  dirname = ''
-  clusternum = ''
-  first = 1
-  last = 53127
-  usage = "GetTree.py -d <dirname> -c <cluster> | ( -f <first> -l <last> )"
-  try:
-     opts, args = getopt.getopt(argv,"hd:f:l:c:",["cluster=", "dir=", "first=", "last="])
-  except getopt.GetoptError, e:
-     print e
-     print usage
-     sys.exit(2)
-  for opt, arg in opts:
-     if opt == '-h':
-        print usage
-        sys.exit()
-     elif opt in ("-c", "--cluser"):
-        clusternum = int(arg)
-     elif opt in ("-f", "--first"):
-        first = int(arg)
-     elif opt in ("-l", "--last"):
-        last = int(arg)
-     elif opt in ("-d", "--dir"):
-        dirname = arg
-
-  con = mdb.connect('localhost', 'root', '', 'Selaginella')
-  with con:
-    cur = con.cursor()
-    if clusternum:
-      first = clusternum - 1
-      last = clusternum + 1
-    else:
-      first -= 1
-      last += 1  
-    cur.execute("SELECT clusternum FROM Sequences WHERE clusternum > %s AND clusternum < %s GROUP BY clusternum", (first, last))
-    rows = cur.fetchall()
-    num_seqs = []
-    print "Writing Sequences to file"
-    for row in rows:
-      clusternum = row[0]
-      seqs = get_seqs(cur, clusternum)
-      seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
-      SeqIO.write(seqs, seq_file, "fasta")
-      num_seqs.append(len(seqs))
-    
-    print "making alignments"
-    index = -1
-    for row in rows:
-      clusternum = row[0]
-      index += 1
-      if num_seqs[index] < 2:
-        print "cluster %s contains %s seqs. At least 2 required for alignment" % (clusternum, num_seqs[index])
-        continue
-      seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
-      translatorx_file = path.join(dirname, 'translatorx_res.nt_ali.fasta')
-      aln_file = path.join(dirname, 'Cluster_' + str(clusternum) + '_aln.fa')
-      nexus_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nex')
-      system("translatorx_vLocal.pl -i %s -p F" % seq_file)
-      system("ConvertAln.py -i %s -o %s -f nexus" % (translatorx_file, nexus_file))
-      proc = subprocess.Popen(["trimal -gappyout -in %s -out %s -colnumbering" % (translatorx_file, aln_file)], stdout=subprocess.PIPE, shell=True)
-      (trimal_res, err) = proc.communicate()
-      add_exset(nexus_file, trimal_res)
-      system("rm %s" % path.join(dirname, 'translatorx_*'))
-
-    print "Making Trees"
-    index = -1
-    for row in rows:
-      clusternum = row[0]
-      index += 1          
-      aln_file = path.join(dirname, 'Cluster_' + str(clusternum) + '_aln.fa')
-      phy_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.phy')
-      tree_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nwk')
-      pdf_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.pdf')
-      if num_seqs[index] < 4:
-        print "cluster %s contains %s seqs. At least 4 required for tree bulding" % (clusternum, num_seqs[index])
-        continue
-      system("ConvertAln.py -i %s -f phylip -x fasta -o %s" % (aln_file, phy_file))
-      system("rm %s" % aln_file)
-      if num_seqs[index] < 50:
-        system("phyml  --quiet --no_memory_check -i %s" % phy_file)
-      else:
-        system("phyml  --quiet --no_memory_check -o n -b 0 -i %s" % phy_file)      
-      system("rm %s" % phy_file)
-      system("mv %s %s" % (phy_file + '_phyml_tree.txt', tree_file))
-      system("rm %s" % phy_file + '_phyml_stats.txt')
-      system("ColourTree.py -t %s -o %s" % (tree_file, pdf_file))
 
 def get_seqs(cur, clusternum):
   seqs = []
@@ -166,9 +80,145 @@ def as_range(iterable):
   else:
     return '{0}'.format(l[0])
 
+class myThread (threading.Thread):
+    def __init__(self, threadID, name, q):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.q = q
+    def run(self):
+        process_data(self.name, self.q)
+
+def process_data(threadName, q):
+    while not exitFlag:
+        queueLock.acquire()
+        if not workQueue.empty():
+            (dirname, clusternum, num_seqs) = q.get()
+            queueLock.release()
+            nexus_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nex')
+            phy_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.phy')
+            tree_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nwk')
+            pdf_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.pdf')
+            if num_seqs < 4:
+              print "cluster %s contains %s seqs. At least 4 required for tree bulding" % (clusternum, num_seqs)
+            else:  
+              print "ConvertAln.py -f phylip -i %s" % nexus_file
+              subprocess.call(["ConvertAln.py -f phylip -i " + nexus_file], shell=True)
+              if num_seqs < 50:
+                print "phyml  --quiet --no_memory_check -i %s" % phy_file
+                subprocess.call(["phyml --quiet --no_memory_check -i " + phy_file], shell=True)
+              else:
+                print "phyml  --quiet --no_memory_check -o n -b 0 -i %s" % phy_file
+                subprocess.call(["phyml --quiet --no_memory_check -o n -b 0 -i " + phy_file], shell=True)      
+              subprocess.call(["rm", phy_file])
+              subprocess.call(["mv", phy_file + '_phyml_tree.txt', tree_file])
+              subprocess.call(["rm", phy_file + '_phyml_stats.txt'])
+              print "ColourTree.py -t %s -o %s" % (tree_file, pdf_file)
+              subprocess.call(["ColourTree.py", "-t", tree_file, "-o", pdf_file])
+
+        else:
+            queueLock.release()
+        time.sleep(1)
   
 
 if __name__ == "__main__":
-  main(sys.argv[1:])
+  exitFlag = 0
+  dirname = ''
+  clusternum = ''
+  first = 1
+  last = 53127
+  usage = "GetTree.py -d <dirname> -c <cluster> | ( -f <first> -l <last> )"
+  try:
+     opts, args = getopt.getopt(sys.argv[1:],"hd:f:l:c:",["cluster=", "dir=", "first=", "last="])
+  except getopt.GetoptError, e:
+     print e
+     print usage
+     sys.exit(2)
+  for opt, arg in opts:
+     if opt == '-h':
+        print usage
+        sys.exit()
+     elif opt in ("-c", "--cluser"):
+        clusternum = int(arg)
+     elif opt in ("-f", "--first"):
+        first = int(arg)
+     elif opt in ("-l", "--last"):
+        last = int(arg)
+     elif opt in ("-d", "--dir"):
+        dirname = arg
+
+  con = mdb.connect('localhost', 'root', '', 'Selaginella')
+  with con:
+    cur = con.cursor()
+    if clusternum:
+      first = clusternum - 1
+      last = clusternum + 1
+    else:
+      first -= 1
+      last += 1  
+    cur.execute("SELECT clusternum FROM Sequences WHERE clusternum > %s AND clusternum < %s GROUP BY clusternum", (first, last))
+    clusters = []
+    for row in cur.fetchall():
+      clusters.append(row[0])
+    num_seqs = []
+    print "Writing Sequences to file"
+    for clusternum in clusters:
+      seqs = get_seqs(cur, clusternum)
+      #seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
+      #SeqIO.write(seqs, seq_file, "fasta")
+      num_seqs.append(len(seqs))
+    
+    print "making alignments"
+    index = -1
+    for clusternum in clusters:
+      index += 1
+      if num_seqs[index] < 2:
+        print "cluster %s contains %s seqs. At least 2 required for alignment" % (clusternum, num_seqs[index])
+        continue
+      seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
+      translatorx_file = path.join(dirname, 'translatorx_res.nt_ali.fasta')
+      aln_file = path.join(dirname, 'Cluster_' + str(clusternum) + '_aln.fa')
+      nexus_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nex')
+      print "translatorx_vLocal.pl -i %s -p F" % seq_file
+      #subprocess.call(["translatorx_vLocal.pl", "-i", seq_file, "-p", "F"])
+      #subprocess.call(["ConvertAln.py", "-i", translatorx_file, "-o", nexus_file, "-f", "nexus"])
+      #proc = subprocess.Popen(["trimal -gappyout -in %s -out %s -colnumbering" % (translatorx_file, aln_file)], stdout=subprocess.PIPE, shell=True)
+      #(trimal_res, err) = proc.communicate()
+      #add_exset(nexus_file, trimal_res)
+      #subprocess.call(["rm " + "translatorx_*"], shell=True)
+      #subprocess.call(["rm", aln_file])
+
+    print "Making Trees"
+    threadList = ["Thread-1", "Thread-2", "Thread-3", "Thread-4", "Thread-5", "Thread-6"]
+    queueLock = threading.Lock()
+    workQueue = Queue.Queue(0)
+    threads = []
+    threadID = 1
+
+    # Create new threads
+    for tName in threadList:
+      thread = myThread(threadID, tName, workQueue)
+      thread.start()
+      threads.append(thread)
+      threadID += 1
+
+    # Fill the queue
+    queueLock.acquire()
+    index = -1
+    for clusternum in clusters:
+      index +=1
+      workQueue.put((dirname, clusternum, num_seqs[index]))
+    queueLock.release()
+
+    # Wait for queue to empty
+    while not workQueue.empty():
+      pass
+    
+    # Notify threads it's time to exit
+    exitFlag = 1
+
+    # Wait for all threads to complete
+    for t in threads:
+      t.join()
 
 
