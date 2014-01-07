@@ -35,6 +35,9 @@ def AddItalics(line):
     line = re.sub(r'\s%s\s' % name, " \\\\textit{%s} " % name, line)
   return line
 
+def ConvertSymbols(line):
+  line = line.replace('µ', "\\textmu ")
+  return line
 
 """
 TODO: add absolute path names for Papers.bib and journal-of-evolutionary-biology.csl
@@ -43,9 +46,9 @@ TODO: add absolute path names for Papers.bib and journal-of-evolutionary-biology
 
 def pandoc(infile, outfile):
     # TODO manage pandoc errors, for example exit status 43 when citations include Snigowski et al. 2000
-    #options = ["pandoc", "--bibliography=Papers.bib", "--csl=journal-of-evolutionary-biology.csl", "--to=latex", infile, ">> " + outfile]
-    #return subprocess.check_call(options)
-    system("pandoc --bibliography=Papers.bib --csl=journal-of-evolutionary-biology.csl --to=latex %s >> %s" % (infile, outfile))
+    options = ["pandoc", "--bibliography=Papers.bib", "--csl=journal-of-evolutionary-biology.csl", "--output=" + outfile, infile]
+    return subprocess.check_call(options)
+    #system("pandoc --parse-raw --bibliography=Papers.bib --csl=journal-of-evolutionary-biology.csl --to=latex %s >> %s" % (infile, outfile))
     
 
 header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
@@ -55,18 +58,27 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 %\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
 \\usepackage{graphicx}				% Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
 \\usepackage{amssymb}
+\\usepackage{textgreek}
 \\title{Cystoseira}
-\\author{Heath E. O'Brien}
+\\author{Heath E. O'Brien\\\\
+        School of Biological Sciences, University of Bristol\\\\
+        Woodland Road, Bristol BS8 1UG\\\\
+        \\texttt{heath.obrien@gmail.com}}
 %\date{}							% Activate to display a given date or no date
 
 \\begin{document}
 \\maketitle
 
-%\section{}
-%\subsection{}
 """
 
 """TODO: add options to specify file names for infile and outfile"""
+
+"""Due to SERIOUS limitations in Pandoc (at least how I'm using it), this needs to be done
+in 2 passes. One with Pandoc to format the references, then one with pdflatex to do all 
+other formatting.
+
+Not only does pandoc ignore the LaTex control statements, it tends to garble them, so I am
+moving as many of them as possible to the second pass"""
 in_fh = open(sys.argv[1], 'r')
 temp_fh = open('temp.tex', 'w')
 
@@ -74,18 +86,24 @@ temp_fh.write('\\begin{document}\n')
 for line in in_fh:
   line = line.strip()
   line = ConvertCiteKeys(line)
-  line = AddItalics(line)
   #print line
   temp_fh.write(line + '\n')    
+in_fh.close()
 temp_fh.write("\n\section*{References}\n")   
 temp_fh.write("\end{document}\n")
 temp_fh.close()           
-out_fh = open('out.tex', 'w')
+pandoc("temp.tex", "pandoc.tex")
+
+pandoc_fh = open("pandoc.tex", 'r')
+out_fh = open("out.tex", 'w')
 out_fh.write(header)
-out_fh.close()
-pandoc("temp.tex", "out.tex")
-out_fh = open('out.tex', 'a')
+for line in pandoc_fh:
+  line = line.strip()
+  line = AddItalics(line)
+  line = ConvertSymbols(line)
+  out_fh.write(line + '\n')
+pandoc_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
-system("rm temp.tex")
+system("rm temp.tex pandoc.tex")
 system("pdflatex out.tex")
