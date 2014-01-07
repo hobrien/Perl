@@ -3,6 +3,7 @@
 
 
 import sys, re, subprocess
+from os import system
 
 def ConvertCiteKeys(line):
   """This regex will combine adjacent Papers citekeys, 
@@ -35,21 +36,19 @@ def AddItalics(line):
   return line
 
 
-"""This is working reasonably well, except for the fact that almost all of the formatting
-info in the header is ignored by pandoc. I haven't been able to figure out why this is,
-but it will need to be solved for any of this to be useful
-
+"""
 TODO: add absolute path names for Papers.bib and journal-of-evolutionary-biology.csl
       option to specify output style
 """
 
 def pandoc(infile, outfile):
     # TODO manage pandoc errors, for example exit status 43 when citations include Snigowski et al. 2000
-    options = ["pandoc", "--bibliography=Papers.bib", "--csl=journal-of-evolutionary-biology.csl", "-o", outfile, infile]
-    return subprocess.check_call(options)
+    #options = ["pandoc", "--bibliography=Papers.bib", "--csl=journal-of-evolutionary-biology.csl", "--to=latex", infile, ">> " + outfile]
+    #return subprocess.check_call(options)
+    system("pandoc --bibliography=Papers.bib --csl=journal-of-evolutionary-biology.csl --to=latex %s >> %s" % (infile, outfile))
     
 
-header = """\documentclass[11pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
 \\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
 \\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
 %\geometry{landscape}                		% Activate for for rotated page geometry
@@ -67,18 +66,26 @@ header = """\documentclass[11pt, oneside]{article}   	% use "amsart" instead of 
 %\subsection{}
 """
 
-"""TODO: add options to specify file names for infil and outfile"""
+"""TODO: add options to specify file names for infile and outfile"""
 in_fh = open(sys.argv[1], 'r')
-out_fh = open('out.tex', 'w')
+temp_fh = open('temp.tex', 'w')
 
-out_fh.write(header)
+temp_fh.write('\\begin{document}\n')
 for line in in_fh:
   line = line.strip()
   line = ConvertCiteKeys(line)
   line = AddItalics(line)
   #print line
-  out_fh.write(line + '\n')     
-out_fh.write("\end{document}")
-out_fh.close()           
-
-pandoc("out.tex", "out.pdf")
+  temp_fh.write(line + '\n')    
+temp_fh.write("\n\section*{References}\n")   
+temp_fh.write("\end{document}\n")
+temp_fh.close()           
+out_fh = open('out.tex', 'w')
+out_fh.write(header)
+out_fh.close()
+pandoc("temp.tex", "out.tex")
+out_fh = open('out.tex', 'a')
+out_fh.write("\n\end{document}\n")
+out_fh.close()
+system("rm temp.tex")
+system("pdflatex out.tex")
