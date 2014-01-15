@@ -119,7 +119,8 @@ def remove_dots(aln):
         new_seq += ref[pos]
       else:
         new_seq += nuc
-    new_aln.append(SeqRecord(Seq(new_seq, alphabet), id=seq.name))
+    print seq.id
+    new_aln.append(SeqRecord(Seq(new_seq, alphabet), id=seq.id))
   return new_aln
     
 
