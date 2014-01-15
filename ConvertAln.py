@@ -5,6 +5,7 @@ import sys, getopt
 from Bio import AlignIO
 from Bio.Alphabet import IUPAC
 from Bio.Nexus import Nexus
+from Heathpy import write_phylip
 
 def main(argv):
   usage = 'ConvertAln -i <infile> -x <informat> -o <outfile> -f <outformat>'
@@ -26,7 +27,7 @@ def main(argv):
      elif opt in ("-x", "--informat"):
         informat = arg
      elif opt in ("-o", "--outfile"):
-        oufile = arg
+        outfile = arg
      elif opt in ("-f", "--outformat"):
         outformat = arg
   if not infile:
@@ -40,17 +41,22 @@ def main(argv):
 
   if informat == 'phylip':
     informat = 'phypli-relaxed'  
-
+  print outfile
   if not outfile:
-    outfile = '.'.join((infile.split('.')[:-1] + [get_extension(outformat)]))
-        
+    if '.' in infile:
+      outfile = '.'.join((infile.split('.')[:-1] + [get_extension(outformat)]))
+    else:
+      outfile = '.'.join((infile, get_extension(outformat)))
+          
   if outformat == 'nexus':
     alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
     write_nexus(alignment, outfile)
   
   elif outformat == 'phylip':
     alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
-    write_phylip(alignment, outfile)
+    out_fh = open(outfile, 'w')
+    write_phylip(alignment, out_fh)
+    out_fh.close()
   
   else:
     AlignIO.convert(infile, informat, outfile, outformat, alphabet=IUPAC.ambiguous_dna)
@@ -62,16 +68,6 @@ def write_nexus(alignment, outfile):
   for record in alignment:
     n.add_sequence(record.id, record.seq.tostring())
     n.write_nexus_data(outfile, interleave=False)
-
-def write_phylip(alignment, outfile):
-  out_fh = open(outfile, 'w')
-  out_fh.write(''.join((str(len(alignment)), ' ', str(len(alignment[0])), '\n')))
-  name_len = 10
-  for seq in alignment:
-    name_len = max(name_len, len(seq.id)+1)
-  for seq in alignment:
-    out_fh.write(''.join((seq.id.ljust(name_len), str(seq.seq), '\n')))
-  out_fh.close()
 
 def guess_format(file):
   ext = file.split('.')[-1]
