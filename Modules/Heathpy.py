@@ -83,20 +83,26 @@ def parse_GTF (fields):
   tags['seqid'] = fields[0]
   return tags
 
-def make_hash(file_handle, column=1, header_lines=0, sep=' '):
+def make_hash(file, column=1, header_lines=0, sep=0):
   column -= 1
-  header_lines -= 1
   hash = {}
-  for (line_num, line) in enumerate(file_handle.readlines()):
-    if line_num <= header_lines:
-      continue
-    line = line.strip()
-    print line
-    id = line.split(sep)[column]
-    if id in hash:
-      warnings.warn("multiple entries for %s" % id)
+  with open(file, 'rb') as csvfile:
+    if not sep:
+      dialect = csv.Sniffer().sniff(csvfile.read(1024))
+      csvfile.seek(0)
+      reader = csv.reader(csvfile, dialect)
     else:
-      hash[id] = 1
+      reader = csv.reader(csvfile, delimiter=sep)
+    for line in reader:
+      if header_lines > 0:
+        header_lines -= 1
+        continue
+      id = line[column]
+      print id
+      if id in hash:
+        warnings.warn("multiple entries for %s" % id)
+      else:
+        hash[id] = 1
   print len(hash)
   return hash
 
