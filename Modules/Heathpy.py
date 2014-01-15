@@ -6,6 +6,7 @@ import sqlite3
 import csv
 from Bio import AlignIO
 from Bio.Seq import Seq
+from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio.Alphabet import IUPAC
 from Bio.SeqRecord import SeqRecord
@@ -83,7 +84,7 @@ def parse_GTF (fields):
   tags['seqid'] = fields[0]
   return tags
 
-def make_hash(file, column=1, header_lines=0, sep=0):
+def make_hash(file, column=1, header=0, sep=0):
   column -= 1
   hash = {}
   with open(file, 'rb') as csvfile:
@@ -94,8 +95,8 @@ def make_hash(file, column=1, header_lines=0, sep=0):
     else:
       reader = csv.reader(csvfile, delimiter=sep)
     for line in reader:
-      if header_lines > 0:
-        header_lines -= 1
+      if header > 0:
+        header -= 1
         continue
       id = line[column]
       print id
@@ -105,6 +106,22 @@ def make_hash(file, column=1, header_lines=0, sep=0):
         hash[id] = 1
   print len(hash)
   return hash
+  
+def remove_dots(aln):
+  ref = aln[0]
+  assert '.' not in ref
+  alphabet = ref.seq.alphabet
+  new_aln = MultipleSeqAlignment([ ref ])
+  for seq in aln[1:]:
+    new_seq = ''
+    for (pos, nuc) in enumerate(seq):
+      if nuc == '.':
+        new_seq += ref[pos]
+      else:
+        new_seq += nuc
+    new_aln.append(SeqRecord(Seq(new_seq, alphabet), id=seq.name))
+  return new_aln
+    
 
 def flatten_GTF(input):
   feature = input.copy()
