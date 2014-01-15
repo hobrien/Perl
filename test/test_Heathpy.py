@@ -1,4 +1,4 @@
-from Heathpy import make_hash, remove_dots
+from Heathpy import make_hash, remove_dots, write_phylip
 from StringIO import StringIO
 from Bio.Alphabet import generic_dna
 from Bio.Seq import Seq
@@ -83,3 +83,25 @@ def test_remove_dots3():
              SeqRecord(Seq("ACTGCTAGCTAG", generic_dna), id="Gamma"),
          ])
   remove_dots(align1)
+  
+def test_write_phylip():
+  output = StringIO()
+  write_phylip(align1, output)
+  results = output.getvalue().split('\n')
+  output.close()
+  assert results[0] == '3 12'
+  assert results[1] == 'Alpha     ACTGCTAGCTAG'
+  assert results[2] == 'Beta      ACT-CTAGC.AG'
+  assert results[3] == 'Gamma     .....A......'
+
+def test_write_phylip2():
+  """ if writer deals with long ids correctly"""
+  align1[0].id = 'very_long_name'
+  output = StringIO()
+  write_phylip(align1, output)
+  results = output.getvalue().split('\n')
+  output.close()
+  assert results[0] == '3 12'
+  assert results[1] == 'very_long_name ACTGCTAGCTAG'
+  assert results[2] == 'Beta           ACT-CTAGC.AG'
+  assert results[3] == 'Gamma          .....A......'

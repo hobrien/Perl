@@ -123,6 +123,14 @@ def remove_dots(aln):
     new_aln.append(SeqRecord(Seq(new_seq, alphabet), id=seq.id))
   return new_aln
     
+def write_phylip(alignment, out_fh):
+  out_fh.write(''.join((str(len(alignment)), ' ', str(len(alignment[0])), '\n')))
+  name_len = 10
+  for seq in alignment:
+    name_len = max(name_len, len(seq.id)+1)
+  for seq in alignment:
+    out_fh.write(''.join((seq.id.ljust(name_len), str(seq.seq), '\n')))
+  return out_fh
 
 def flatten_GTF(input):
   feature = input.copy()
