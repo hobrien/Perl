@@ -47,20 +47,39 @@ def test_make_hash3():
     assert '699770' in hash
     assert '2000' not in hash
 
-def test_remove_dots():
-  align1 = MultipleSeqAlignment([
+
+align1 = MultipleSeqAlignment([
              SeqRecord(Seq("ACTGCTAGCTAG", generic_dna), id="Alpha"),
              SeqRecord(Seq("ACT-CTAGC.AG", generic_dna), id="Beta"),
-             SeqRecord(Seq("ACTGCTAGDTAG", generic_dna), id="Gamma"),
+             SeqRecord(Seq(".....A......", generic_dna), id="Gamma"),
          ])
+
+def test_remove_dots():
+  aln2 = remove_dots(align1)
+  print "testing if %s == ACTGCTAGCTAG" % aln2[0].seq       
+  assert str(remove_dots(align1)[0].seq) == "ACTGCTAGCTAG"
+  print "testing if %s == ACT-CTAGCTAG" % aln2[1].seq       
   assert str(remove_dots(align1)[1].seq) == "ACT-CTAGCTAG"
+  print "testing if %s == ACTGCAAGCTAG" % aln2[2].seq       
+  assert str(remove_dots(align1)[2].seq) == "ACTGCAAGCTAG"
+
+
+def test_remove_dots2():
+  """test if sequence names are conserved"""
+  aln2 = remove_dots(align1)
+  print "testing if %s == Alpha" % aln2[0].id       
+  assert aln2[0].id == "Alpha"
+  print "testing if %s == Beta" % aln2[1].id       
+  assert aln2[1].id == "Beta"
+  print "testing if %s == Gamma" % aln2[2].id       
+  assert aln2[2].id == "Gamma"
 
 @raises(AssertionError)  
-def test_remove_dots2():
+def test_remove_dots3():
   """test if error handling works correctly when dot in reference seq"""
   align1 = MultipleSeqAlignment([
              SeqRecord(Seq("A.TGCTAGCTAG", generic_dna), id="Alpha"),
              SeqRecord(Seq("ACT-CTAGC.AG", generic_dna), id="Beta"),
-             SeqRecord(Seq("ACTGCTAGDTAG", generic_dna), id="Gamma"),
+             SeqRecord(Seq("ACTGCTAGCTAG", generic_dna), id="Gamma"),
          ])
   remove_dots(align1)
