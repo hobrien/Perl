@@ -4,6 +4,7 @@
 import sys, warnings, string
 import sqlite3
 import csv
+import re
 from Bio import AlignIO
 from Bio.Seq import Seq
 from Bio.Seq import Seq
@@ -15,6 +16,28 @@ def warning_on_one_line(message, category, filename, lineno, file=None, line=Non
     return ' %s:%s: %s: %s\n' % (filename, lineno, category.__name__, message)
 
 warnings.formatwarning = warning_on_one_line
+
+def six_frame_translation (seq):
+  translations = []
+  extra = len(seq) % 3
+  for codon in (0,1,2):
+    trim_length = (len(seq) - codon) % 3 
+    if trim_length > 0:
+      translations.append(seq[codon:-trim_length].translate())
+      translations.append(seq.reverse_complement()[codon:-trim_length].translate())
+    else:
+      translations.append(seq[codon:].translate())      
+      translations.append(seq.reverse_complement()[codon:].translate())
+  return translations
+
+def find_CaaX(seq):
+  translations = six_frame_translation(seq)
+  output = []
+  motif = "M[^*]*C[IVLAP]{2}.\*"
+  for aa in translations:
+    for match in re.findall(motif, str(aa)):
+      output.append(match)
+  return output
 
 def make_db(blastfile, db_name):
   conn = sqlite3.connect(db_name)

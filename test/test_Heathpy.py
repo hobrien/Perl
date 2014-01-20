@@ -1,6 +1,6 @@
-from Heathpy import make_hash, remove_dots, write_phylip
+from Heathpy import make_hash, remove_dots, write_phylip, six_frame_translation, find_CaaX
 from StringIO import StringIO
-from Bio.Alphabet import generic_dna
+from Bio.Alphabet import generic_dna, IUPAC
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment
@@ -105,3 +105,26 @@ def test_write_phylip2():
   assert results[1] == 'very_long_name ACTGCTAGCTAG'
   assert results[2] == 'Beta           ACT-CTAGC.AG'
   assert results[3] == 'Gamma          .....A......'
+
+def test_six_frame_translation():
+  coding_dna = Seq("ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG", IUPAC.unambiguous_dna)
+  translations = six_frame_translation(coding_dna)
+  print "test if %s == MAIVMGR*KGAR*" % str(translations[0])
+  assert str(translations[0]) == "MAIVMGR*KGAR*"
+  print "test if %s == LSGTLSAAHYNGH" % str(translations[1])
+  assert str(translations[1]) == "LSGTLSAAHYNGH"
+  print "test if %s == WPL*WAAERVPD" % str(translations[2])
+  assert str(translations[2]) == "WPL*WAAERVPD"
+  print "test if %s == YRAPFQRPITMA" % str(translations[3])
+  assert str(translations[3]) == "YRAPFQRPITMA"
+  print "test if %s == GHCNGPLKGCPI" % str(translations[4])
+  assert str(translations[4]) == "GHCNGPLKGCPI"
+  print "test if %s == IGHPFSGPLQWP" % str(translations[5])
+  assert str(translations[5]) == "IGHPFSGPLQWP"
+
+def test_find_CaaX():
+  coding_dna = Seq("ATGGCCATTGTAATGGGCCGCTGATGTGCTGCCCGATAG", IUPAC.unambiguous_dna)
+  assert len(find_CaaX(coding_dna)) == 0
+  coding_dna = Seq("ATGGCCATTGTAATGGGCCGCTGGTGTGCTGCCCGATAG", IUPAC.unambiguous_dna)
+  assert len(find_CaaX(coding_dna)) == 1
+  
