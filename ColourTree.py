@@ -75,6 +75,7 @@ def main(argv):
             continue
           expression_label= TextFace(' %s ' % normalized[x], fsize=16)
           expression_label.background.color = get_colour(vsd[x])
+          expression_label.border.width = 1
           expression_label.margin_left, expression_label.margin_right, expression_label.margin_top, expression_label.margin_bottom = 1,1,2,1
           # This isn't working right : ( expression_label.border.width=1
           leaf.add_face(expression_label, column = x+2, position="branch-right")
