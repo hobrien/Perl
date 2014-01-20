@@ -54,7 +54,7 @@ while ( my $seq = $seqin->next_seq ) {
   if ( $seq_start < 0 ) { $seq_start = length($seq) - $seq_start + 1; }
   if ( $seq_end < 0 ) { $seq_end = length($seq) - $seq_end + 1; }
   if ( $seq_end < $seq_start ) { my $temp = $seq_start; $seq_start = $seq_end; $seq_end = $temp; }
-  unless ($seq_start == 0 ) { $seq_start --; }
+  #unless ($seq_start == 0 ) { $seq_start --; }
   $seq->seq($seq->subseq($seq_start, $seq_end));
   $seqout->write_seq($seq);
 }
