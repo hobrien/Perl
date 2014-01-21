@@ -3,6 +3,8 @@
 import MySQLdb as mdb
 
 def combine_clusters(cluster1, cluster2, db='Selaginella'):
+  """replace the cluster number of cluster1 sequences with cluster2 (cluster1 sequences
+     that are also in cluster2 are deleted"""
   con = mdb.connect('localhost', 'root', '', db)
   with con:
     cur = con.cursor()
