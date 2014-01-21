@@ -20,9 +20,11 @@ def test_combine_clusters():
 
     cur.execute("""INSERT INTO `cluster_num` (`id`, `seqid`, `cluster`)
                      VALUES
-                	   (2,'Seq1',2),
-                	   (4,'Seq2',2),
-                	   (5,'Seq3',2),
+                	   (1,'Seq1',1),
+                	   (2,'Seq2',1),
+                	   (3,'Seq3',1),
+                	   (4,'Seq1',2),
+                	   (5,'Seq2',2),
                 	   (6,'Seq4',2);"""
                 )
 
