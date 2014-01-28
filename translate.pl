@@ -2,27 +2,29 @@
 
 =head1 NAME
 
-trunc.pl version 2, 22 April 2013
+translate.pl version 3, 28 Jan 2014
 
 =head1 SYNOPSIS
 
-cat XXX | trunc.pl start_coord end_coord 
+cat FILENAME | translate.pl
+
+OR
+
+translate.pl FILENAME
 
 =head1 DESCRIPTION
 
-This will accept a sequence (or sequences) from STDIN, truncate it to the specified region, and
-print the results.
+This will accept a sequence (or sequences) from STDIN or one or more files, translate them
+to amino acid sequences and print the results
 
 -Can accept a plain sequence or fasta format.
 
--Negative numbers will be truncated from the end of the sequence.
--If the end of the region is not specified, it will truncate to the end of the sequence.
-
-Options:
-
 =head2 NOTES
-This version had been rewritten to use the same basic code as rc.pl, which simplifies it 
-considerably. Any edits to the main program here should be replicated in that script and vice versa.
+Switched back to manual parsing rather than use of SeqIO because I can't figure out how
+to handle multiple formats (fasta/raw using SeqIO)
+
+I tried to write a biopython version of this, but biopython complains if you try to 
+translate a sequence with gaps, so this is more flexiable
 =head1 AUTHOR
 
  Heath E. O'Brien E<lt>heath.obrien-at-gmail-dot-comE<gt>
@@ -32,20 +34,39 @@ considerably. Any edits to the main program here should be replicated in that sc
 
 use strict;
 use warnings;
-use Bio::SeqIO;
+use Bio::Seq;
 
 my $usage = "type perldoc trunc.pl for help";
+my $name;
+my $seq;
+  
+while (<>) {
+  ($name, $seq) = parse_file($name, $seq, $_);
+}
+($name, $seq) = parse_file($name, $seq, '>');
 
-my $seqin = Bio::SeqIO->new(
-                            -file   => "cat |",
-                            -format => 'fasta',
-                            );
+sub parse_file {
+  my $name = shift;
+  my $seq = shift;
+  my $line = shift;
+  if ( $line =~ /^>/ ) {
+    if ($name) {
+      print $name;
+    }
+    if ($seq) {
+      $seq =~ s/\s//g;
+      print translate($seq)->seq, "\n";
+    }
+    $name = $line; 
+    $seq = ''
+  }
+  else {  $seq .= $_; }
+  return ($name, $seq)
+}
 
-my $seqout = Bio::SeqIO->new(
-                             -file => "| cat",
-                             -format => 'fasta',
-                             );
-
-while ( my $seq = $seqin->next_seq ) {
-  $seqout->write_seq($seq->translate);
+sub translate {
+  my $seq = shift;
+  my $seq_obj = Bio::Seq->new(-seq => $seq,
+                         -alphabet => 'dna' );
+  return $seq_obj->translate();
 }
