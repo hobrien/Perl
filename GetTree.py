@@ -10,44 +10,7 @@ import subprocess
 import Queue, threading, time
 
 
-def get_seqs(cur, clusternum):
-  seqs = []
-  cur.execute("SELECT seqid, sequence FROM Sequences WHERE repseq = 'NR' AND clusternum = %s", clusternum)
-  for (seqid, sequence) in cur.fetchall():
-    seq_record = SeqRecord(Seq(sequence), id=seqid, description = '')
-    if seqid[:4] in ('KRAU', 'MOEL', 'UNCc', 'WILD'):  #BLUELEAF sequence. Need to remove non-coding portions
-      cur.execute("SELECT start, end, strand, gene_id FROM orfs WHERE seqid = %s", seqid)
-      for (start, end, strand, gene_id) in cur.fetchall():
-        strand = int(strand)        
-        #Check that gene_id is properly formatted (with cluster 
-        if gene_id.split('_')[0] not in seqid or gene_id.split('_')[1][0] != 'c': #gene_id not properly formated
-          print "skipping %s (gene_id %s)" % (seqid, gene_id)
-          continue
-        if int(gene_id.split('_')[1][1:]) != clusternum: #gene_id properly formatted, but not in agreement with clusternum
-          print "skipping %s (gene_id %s)" % (seqid, gene_id)
-          continue        
-        seq_record = seq_record[start-1:end]
-        if strand == 1:
-          name = '_'.join(map(str, [seqid, start, end]))
-        elif strand == 0:
-          name = '_'.join(map(str, [seqid, end, start]))
-          seq_record = seq_record.reverse_complement()
-          seq_record.description = ''
-        else:
-          sys.exit('strand %s not recognized' % strand)
-        seq_record.id = name 
-        #seq_record.description = ''
-        seqs.append(seq_record)
-    elif seqid[:3] in ('EFJ', 'Sel', 'ATH'):  #other non 1KP sequences:
-      seqs.append(seq_record)
-  cur.execute("SELECT sequences.seqid, sequences.sequence FROM cluster_num, sequences WHERE sequences.seqid = cluster_num.seqid AND cluster_num.cluster = %s", clusternum)
-  for (seqid, sequence) in cur.fetchall():
-    seq_record = SeqRecord(Seq(sequence), id=seqid, description = '')
-    seqs.append(seq_record)
-    
-    
-  return seqs
-
+#Append trimal results to Nexus file as an exclusion set
 def add_exset(file, trimal_res):
   import re
   from itertools import groupby, count
@@ -72,7 +35,8 @@ def add_exset(file, trimal_res):
   aln.write(";\n\nEND;\n")
   aln.write("BEGIN CODONS;\n\tCODONPOSSET * UNTITLED  =  1: 1 - %s\\3, 2: 2 - %s\\3, 3: 3 - %s\\3;\n\nEND;\n" % (length, length, length))
   aln.close
-   
+
+#convert trimal intervals to ranges   
 def as_range(iterable):
   l = list(iterable)
   if len(l) > 1:
@@ -164,8 +128,8 @@ if __name__ == "__main__":
     print "Writing Sequences to file"
     for clusternum in clusters:
       seqs = get_seqs(cur, clusternum)
-      #seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
-      #SeqIO.write(seqs, seq_file, "fasta")
+      seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
+      SeqIO.write(seqs, seq_file, "fasta")
       num_seqs.append(len(seqs))
     
     print "making alignments"
@@ -180,13 +144,13 @@ if __name__ == "__main__":
       aln_file = path.join(dirname, 'Cluster_' + str(clusternum) + '_aln.fa')
       nexus_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.nex')
       print "translatorx_vLocal.pl -i %s -p F" % seq_file
-      #subprocess.call(["translatorx_vLocal.pl", "-i", seq_file, "-p", "F"])
-      #subprocess.call(["ConvertAln.py", "-i", translatorx_file, "-o", nexus_file, "-f", "nexus"])
-      #proc = subprocess.Popen(["trimal -gappyout -in %s -out %s -colnumbering" % (translatorx_file, aln_file)], stdout=subprocess.PIPE, shell=True)
-      #(trimal_res, err) = proc.communicate()
-      #add_exset(nexus_file, trimal_res)
-      #subprocess.call(["rm " + "translatorx_*"], shell=True)
-      #subprocess.call(["rm", aln_file])
+      subprocess.call(["translatorx_vLocal.pl", "-i", seq_file, "-p", "F"])
+      subprocess.call(["ConvertAln.py", "-i", translatorx_file, "-o", nexus_file, "-f", "nexus"])
+      proc = subprocess.Popen(["trimal -gappyout -in %s -out %s -colnumbering" % (translatorx_file, aln_file)], stdout=subprocess.PIPE, shell=True)
+      (trimal_res, err) = proc.communicate()
+      add_exset(nexus_file, trimal_res)
+      subprocess.call(["rm " + "translatorx_*"], shell=True)
+      subprocess.call(["rm", aln_file])
 
     print "Making Trees"
     threadList = ["Thread-1", "Thread-2", "Thread-3", "Thread-4", "Thread-5", "Thread-6"]
