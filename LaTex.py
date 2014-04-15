@@ -3,8 +3,7 @@
 
 
 import sys, re, subprocess
-from os import system
-from os.path import expanduser
+from os import system, path
 
 def ConvertCiteKeys(line):
   """This regex will combine adjacent Papers citekeys, 
@@ -42,9 +41,6 @@ def ConvertSymbols(line):
   line = line.replace('µ', "\\textmu ")
   return line
 
-#TODO: add absolute path names for Papers.bib and journal-of-evolutionary-biology.csl
-#      option to specify output style
-
 def AddURL(line):
   """ adds \url tags to urls (unless already present). It searches for 'http://' followed 
   a string of valid url characters (including '%xx' unicode triplets) and ending with a
@@ -53,19 +49,18 @@ def AddURL(line):
   line = re.sub(r'(\\url{)?(http://([!#$&-;=?-[\]_a-z~]|%[0-9a-fA-F]{2})+)}?[^() [\]]', r'\url{\2}', line)
   return line
   
+  # TODO: deal with urls that don't contain 'http://'
+  
 
 def pandoc(infile, outfile):
-    latex_dir = expanduser('~/Documents/LaTex/')
+    latex_dir = path.expanduser('~/Documents/LaTex/')
     print latex_dir
-    # TODO manage pandoc errors, for example exit status 43 when citations include Snigowski et al. 2000
     options = ["pandoc", "--bibliography=" + latex_dir + "Papers.bib", "--csl=" + latex_dir + "journal-of-evolutionary-biology.csl", "--output=" + outfile, infile]
     return subprocess.check_call(options)
-    #system("pandoc --parse-raw --bibliography=Papers.bib --csl=journal-of-evolutionary-biology.csl --to=latex %s >> %s" % (infile, outfile))
+
+    # TODO: manage pandoc errors, for example exit status 43 when citations include Snigowski et al. 2000
+    # TODO: add option to specify output style
     
-#TODO move header to a separate file
-
-
-#TODO: add options to specify file names for infile and outfile
 
 """Due to SERIOUS limitations in Pandoc (at least how I'm using it), this needs to be done
 in 2 passes. One with Pandoc to format the references, then one with pdflatex to do all 
@@ -73,7 +68,15 @@ other formatting.
 
 Not only does pandoc ignore the LaTex control statements, it tends to garble them, so I am
 moving as many of them as possible to the second pass"""
-in_fh = open(sys.argv[1], 'r')
+infile = sys.argv[1]
+basename, ext = path.splitext(infile)
+if ext == 'tex':
+  outfile = basename + '_out.tex'
+else:
+  outfile = basename + '.tex'
+  
+in_fh = open(infile, 'r')
+
 temp_fh = open('temp.tex', 'w')
 
 temp_fh.write('\\begin{document}\n')
@@ -101,11 +104,12 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 \\maketitle
 
 """
+#TODO move header to a separate file
+
 
 for line in in_fh:
   line = line.strip()
   line = ConvertCiteKeys(line)
-  #print line
   temp_fh.write(line + '\n')    
 in_fh.close()
 temp_fh.write("\n\section*{References}\n")   
@@ -114,7 +118,7 @@ temp_fh.close()
 pandoc("temp.tex", "pandoc.tex")
 
 pandoc_fh = open("pandoc.tex", 'r')
-out_fh = open("out.tex", 'w')
+out_fh = open(outfile, 'w')
 out_fh.write(header)
 for line in pandoc_fh:
   line = line.strip()
@@ -125,5 +129,5 @@ for line in pandoc_fh:
 pandoc_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
-#system("rm temp.tex pandoc.tex")
-system("pdflatex out.tex")
+system("pdflatex %s" % outfile)
+system("rm temp.tex pandoc.tex %s.tex %s.log %s.aux %s.out" % (basename, basename, basename, basename))
