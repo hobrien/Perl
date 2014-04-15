@@ -38,7 +38,7 @@ def AddItalics(line):
   			 'Thalassiosira pseudonana', 'Thalassiosira punctigera',
              'Zonaria tournefortii', 'Z. tournefortii', 'Zonaria']
   for name in species:
-    line = re.sub(r'\s%s\s' % name, " \\\\textit{%s} " % name, line)
+    line = re.sub(r'\b%s\b' % name, " \\\\textit{%s} " % name, line)
   return line
 
 def ConvertSymbols(line):
