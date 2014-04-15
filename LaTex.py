@@ -64,26 +64,6 @@ def pandoc(infile, outfile):
     
 #TODO move header to a separate file
 
-header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
-\\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
-\\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
-%\geometry{landscape}                		% Activate for for rotated page geometry
-%\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
-\\usepackage{graphicx}				% Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
-\\usepackage{amssymb}
-\\usepackage{textgreek}
-\usepackage{hyperref}
-\\title{Cystoseira}
-\\author{Heath E. O'Brien\\\\
-        School of Biological Sciences, University of Bristol\\\\
-        Woodland Road, Bristol BS8 1UG\\\\
-        \\texttt{heath.obrien@gmail.com}}
-%\date{}							% Activate to display a given date or no date
-
-\\begin{document}
-\\maketitle
-
-"""
 
 #TODO: add options to specify file names for infile and outfile
 
@@ -97,6 +77,31 @@ in_fh = open(sys.argv[1], 'r')
 temp_fh = open('temp.tex', 'w')
 
 temp_fh.write('\\begin{document}\n')
+
+#read first line of infile to obtain title
+title = in_fh.readline()
+
+header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+\\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
+\\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
+%\geometry{landscape}                		% Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
+\\usepackage{graphicx}				% Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
+\\usepackage{amssymb}
+\\usepackage{textgreek}
+\usepackage{hyperref}
+\\title{""" + title + """}
+\\author{Heath E. O'Brien\\\\
+        School of Biological Sciences, University of Bristol\\\\
+        Woodland Road, Bristol BS8 1UG\\\\
+        \\texttt{heath.obrien@gmail.com}}
+%\date{}							% Activate to display a given date or no date
+
+\\begin{document}
+\\maketitle
+
+"""
+
 for line in in_fh:
   line = line.strip()
   line = ConvertCiteKeys(line)
