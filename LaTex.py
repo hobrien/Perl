@@ -1,6 +1,10 @@
 #!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 
+"""I am rapidly hitting the limits of what I can do with pandoc/bibtex and I hate having
+to maintain two databases. I'm going to remove the citation formatting from this and just
+do that with the Papers citation support. This means all I have to do is one pass with
+LaTex"""
 
 import sys, re, subprocess
 from os import system, path
@@ -39,6 +43,7 @@ def AddItalics(line):
 
 def ConvertSymbols(line):
   line = line.replace('µ', "\\textmu ")
+  line = line.replace('&', "\& ")
   return line
 
 def AddURL(line):
@@ -55,7 +60,7 @@ def AddURL(line):
 def pandoc(infile, outfile):
     latex_dir = path.expanduser('~/Documents/LaTex/')
     print latex_dir
-    options = ["pandoc", "--bibliography=" + latex_dir + "Papers.bib", "--csl=" + latex_dir + "journal-of-evolutionary-biology.csl", "--output=" + outfile, infile]
+    options = ["pandoc", "--bibliography=" + latex_dir + "Papers.bibtex", "--csl=" + latex_dir + "journal-of-evolutionary-biology.csl", "--output=" + outfile, infile]
     return subprocess.check_call(options)
 
     # TODO: manage pandoc errors, for example exit status 43 when citations include Snigowski et al. 2000
@@ -77,14 +82,11 @@ else:
   
 in_fh = open(infile, 'r')
 
-temp_fh = open('temp.tex', 'w')
-
-temp_fh.write('\\begin{document}\n')
-
 #read first line of infile to obtain title
 title = in_fh.readline()
 
 header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+\\usepackage[utf8]{inputenc}
 \\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
 \\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
 %\geometry{landscape}                		% Activate for for rotated page geometry
@@ -107,26 +109,15 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 #TODO move header to a separate file
 
 
-for line in in_fh:
-  line = line.strip()
-  line = ConvertCiteKeys(line)
-  temp_fh.write(line + '\n')    
-in_fh.close()
-temp_fh.write("\n\section*{References}\n")   
-temp_fh.write("\end{document}\n")
-temp_fh.close()           
-pandoc("temp.tex", "pandoc.tex")
-
-pandoc_fh = open("pandoc.tex", 'r')
 out_fh = open(outfile, 'w')
 out_fh.write(header)
-for line in pandoc_fh:
+for line in in_fh:
   line = line.strip()
   line = AddItalics(line)
   line = ConvertSymbols(line)
   line = AddURL(line)
   out_fh.write(line + '\n')
-pandoc_fh.close()
+in_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
 system("pdflatex %s" % outfile)
