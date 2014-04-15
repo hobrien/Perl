@@ -12,7 +12,7 @@ def ConvertCiteKeys(line):
   
   """This regex will add \citep in front of Papers citekeys (It will fail if suffixes or 
   prefixes are included. I need to add functionality for this)"""
-  line = re.sub(r'(\{(([A-Z][a-z]+:\d{4}[a-z]{2},? ?)+)\})', r'\citep\1', line)
+  line = re.sub(r'((\\cite)?\{(([A-Z][a-z]+:\d{4}[a-z]{2},? ?)+)\})', r'\citep\1', line)
 
   """This regex is to deal with author suppression (ie OBrien et al. (2012) showed that...
   It will fail if the citekey has multiple papers, though I can't imagine a situation where
@@ -30,7 +30,9 @@ def ConvertCiteKeys(line):
 """This works OK, though there may be a more efficient way to do it using regex"""
 def AddItalics(line):
   species = ['Cysoseira stricta', 'C. stricta', 'Cysoseira', 'Dictyota dichotoma', 'D. dichotoma', 'Dictyota', 
-           'Zonaria tournefortii', 'Z. tournefortii', 'Zonaria']
+  			 'Phaeodactylum tricornutum', 'Pseudo-nitzchia multiseries', 'Seminavis robusta', 
+  			 'Thalassiosira pseudonana', 'Thalassiosira punctigera',
+             'Zonaria tournefortii', 'Z. tournefortii', 'Zonaria']
   for name in species:
     line = re.sub(r'\s%s\s' % name, " \\\\textit{%s} " % name, line)
   return line
@@ -39,10 +41,9 @@ def ConvertSymbols(line):
   line = line.replace('µ', "\\textmu ")
   return line
 
-"""
-TODO: add absolute path names for Papers.bib and journal-of-evolutionary-biology.csl
-      option to specify output style
-"""
+#TODO: add absolute path names for Papers.bib and journal-of-evolutionary-biology.csl
+#      option to specify output style
+
 
 def pandoc(infile, outfile):
     # TODO manage pandoc errors, for example exit status 43 when citations include Snigowski et al. 2000
@@ -50,6 +51,7 @@ def pandoc(infile, outfile):
     return subprocess.check_call(options)
     #system("pandoc --parse-raw --bibliography=Papers.bib --csl=journal-of-evolutionary-biology.csl --to=latex %s >> %s" % (infile, outfile))
     
+#TODO move header to a separate file
 
 header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
 \\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
@@ -71,7 +73,7 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 
 """
 
-"""TODO: add options to specify file names for infile and outfile"""
+#TODO: add options to specify file names for infile and outfile
 
 """Due to SERIOUS limitations in Pandoc (at least how I'm using it), this needs to be done
 in 2 passes. One with Pandoc to format the references, then one with pdflatex to do all 
