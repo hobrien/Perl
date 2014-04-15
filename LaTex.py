@@ -12,7 +12,7 @@ def ConvertCiteKeys(line):
   
   """This regex will add \citep in front of Papers citekeys (It will fail if suffixes or 
   prefixes are included. I need to add functionality for this)"""
-  line = re.sub(r'((\\cite)?\{(([A-Z][a-z]+:\d{4}[a-z]{2},? ?)+)\})', r'\citep\1', line)
+  line = re.sub(r'(\\cite)?(\{(([A-Z][a-z]+:\d{4}[a-z]{2},? ?)+)\})', r'\citep\2', line)
 
   """This regex is to deal with author suppression (ie OBrien et al. (2012) showed that...
   It will fail if the citekey has multiple papers, though I can't imagine a situation where
@@ -130,4 +130,4 @@ pandoc_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
 system("pdflatex %s" % outfile)
-system("rm temp.tex pandoc.tex %s.tex %s.log %s.aux %s.out" % (basename, basename, basename, basename))
+#system("rm temp.tex pandoc.tex %s.tex %s.log %s.aux %s.out" % (basename, basename, basename, basename))
