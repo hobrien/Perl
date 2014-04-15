@@ -4,6 +4,7 @@
 
 import sys, re, subprocess
 from os import system
+from os.path import expanduser
 
 def ConvertCiteKeys(line):
   """This regex will combine adjacent Papers citekeys, 
@@ -46,8 +47,10 @@ def ConvertSymbols(line):
 
 
 def pandoc(infile, outfile):
+    latex_dir = expanduser('~/Documents/LaTex/')
+    print latex_dir
     # TODO manage pandoc errors, for example exit status 43 when citations include Snigowski et al. 2000
-    options = ["pandoc", "--bibliography=Papers.bib", "--csl=journal-of-evolutionary-biology.csl", "--output=" + outfile, infile]
+    options = ["pandoc", "--bibliography=" + latex_dir + "Papers.bib", "--csl=" + latex_dir + "journal-of-evolutionary-biology.csl", "--output=" + outfile, infile]
     return subprocess.check_call(options)
     #system("pandoc --parse-raw --bibliography=Papers.bib --csl=journal-of-evolutionary-biology.csl --to=latex %s >> %s" % (infile, outfile))
     
