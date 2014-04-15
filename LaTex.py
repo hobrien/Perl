@@ -51,7 +51,7 @@ def AddURL(line):
   a string of valid url characters (including '%xx' unicode triplets) and ending with a
   space or parenthesis/bracket (allowing parens within urls but not at the end
   """
-  line = re.sub(r'(\\url{)?(http://([!#$&-;=?-[\]_a-z~]|%[0-9a-fA-F]{2})+)}?[^() [\]]', r'\url{\2}', line)
+  line = re.sub(r'(\\url{)?(http://([!#$&-;=?-[\]_a-z~]|%[0-9a-fA-F]{2})+[^() [\]{}])}?', r'\url{\2}', line)
   return line
   
   # TODO: deal with urls that don't contain 'http://'
@@ -62,9 +62,6 @@ def pandoc(infile, outfile):
     print latex_dir
     options = ["pandoc", "--bibliography=" + latex_dir + "Papers.bibtex", "--csl=" + latex_dir + "journal-of-evolutionary-biology.csl", "--output=" + outfile, infile]
     return subprocess.check_call(options)
-
-    # TODO: manage pandoc errors, for example exit status 43 when citations include Snigowski et al. 2000
-    # TODO: add option to specify output style
     
 
 """Due to SERIOUS limitations in Pandoc (at least how I'm using it), this needs to be done
@@ -75,6 +72,7 @@ Not only does pandoc ignore the LaTex control statements, it tends to garble the
 moving as many of them as possible to the second pass"""
 infile = sys.argv[1]
 basename, ext = path.splitext(infile)
+basename = basename.replace('-formatted', '')
 if ext == 'tex':
   outfile = basename + '_out.tex'
 else:
@@ -94,15 +92,15 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 \\usepackage{graphicx}				% Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
 \\usepackage{amssymb}
 \\usepackage{textgreek}
-\usepackage{hyperref}
+\usepackage[colorlinks]{hyperref}
+\\begin{document}
 \\title{""" + title + """}
 \\author{Heath E. O'Brien\\\\
         School of Biological Sciences, University of Bristol\\\\
         Woodland Road, Bristol BS8 1UG\\\\
-        \\texttt{heath.obrien@gmail.com}}
+        \href{mailto:heath.obrien@gmail.com}{\\texttt{heath.obrien@gmail.com}}  }
 %\date{}							% Activate to display a given date or no date
 
-\\begin{document}
 \\maketitle
 
 """
@@ -111,14 +109,20 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 
 out_fh = open(outfile, 'w')
 out_fh.write(header)
+
+references = 0
 for line in in_fh:
   line = line.strip()
   line = AddItalics(line)
   line = ConvertSymbols(line)
   line = AddURL(line)
-  out_fh.write(line + '\n')
+  if line == "\section*{References}": references = 1
+  if references:
+    out_fh.write(line + '\n\n')
+  else:
+    out_fh.write(line + '\n')
 in_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
 system("pdflatex %s" % outfile)
-#system("rm temp.tex pandoc.tex %s.tex %s.log %s.aux %s.out" % (basename, basename, basename, basename))
+system("rm %s %s.tex %s.log %s.aux %s.out" % (infile, basename, basename, basename, basename))
