@@ -45,6 +45,14 @@ def ConvertSymbols(line):
 #TODO: add absolute path names for Papers.bib and journal-of-evolutionary-biology.csl
 #      option to specify output style
 
+def AddURL(line):
+  """ adds \url tags to urls (unless already present). It searches for 'http://' followed 
+  a string of valid url characters (including '%xx' unicode triplets) and ending with a
+  space or parenthesis/bracket (allowing parens within urls but not at the end
+  """
+  line = re.sub(r'(\\url{)?(http://([!#$&-;=?-[\]_a-z~]|%[0-9a-fA-F]{2})+)}?[^() [\]]', r'\url{\2}', line)
+  return line
+  
 
 def pandoc(infile, outfile):
     latex_dir = expanduser('~/Documents/LaTex/')
@@ -64,6 +72,7 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 \\usepackage{graphicx}				% Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
 \\usepackage{amssymb}
 \\usepackage{textgreek}
+\usepackage{hyperref}
 \\title{Cystoseira}
 \\author{Heath E. O'Brien\\\\
         School of Biological Sciences, University of Bristol\\\\
@@ -106,9 +115,10 @@ for line in pandoc_fh:
   line = line.strip()
   line = AddItalics(line)
   line = ConvertSymbols(line)
+  line = AddURL(line)
   out_fh.write(line + '\n')
 pandoc_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
-system("rm temp.tex pandoc.tex")
+#system("rm temp.tex pandoc.tex")
 system("pdflatex out.tex")
