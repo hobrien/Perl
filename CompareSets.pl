@@ -52,8 +52,8 @@ foreach(@ARGV) {
   push(@sets, \@names);
 }
 
-GetGroups(\@sets, \@files);
-#GetVenn(\@sets, \@files);
+#GetGroups(\@sets, \@files);
+GetVenn(\@sets, \@files);
 
 sub GetGroups{
    my $set_ref = shift; 
@@ -61,32 +61,31 @@ sub GetGroups{
    my $file_ref = shift; 
    my @files = @{$file_ref};
    my @used = ();
-   open(OUT, ">", 'groups.txt'); #This IO could be made a lot more flexible, but this will do for now
    my $lc= List::Compare->new(@sets);
    my @current = $lc->get_intersection;
-   print join(", ", @files), ": ", scalar(@current), "\n";
-   print OUT join(", ", @files), ": ", join(", ", @current), "\n";
+   if ( @current > 0 ) {
+     print join(", ", @files), "(", scalar(@current), "):\n";
+     print SplitArray(@current), "\n";
+   }
    @used =(@used, @current);
    if ( @sets > 2 ) {
-      print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n";
       for (my $i = 0; $i < @sets; $i ++) {
          my @spliced_set = @sets;
          my @spliced_files = @files;
          splice(@spliced_set, $i, 1);
          splice(@spliced_files, $i, 1);
-         print join(", ", @spliced_files), ": ";
-         print OUT join(", ", @spliced_files), ": ";
          $lc= List::Compare->new(@spliced_set);
          my @in_all = $lc->get_intersection;
          $lc= List::Compare->new(\@in_all, \@used);
          my @unique_to_set = $lc->get_unique;
-         print OUT SplitArray(@unique_to_set), "\n";
-         print scalar(@unique_to_set), "\n";
+         if ( @unique_to_set > 0 ) {
+            print join(", ", @spliced_files), "(", scalar(@unique_to_set), "):\n";
+            print SplitArray(@unique_to_set), "\n";
+         }
          @used =(@used, @unique_to_set);         
       }
    }
    if ( @sets > 3 ) {
-      print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n";
       for (my $i = 0; $i < @sets - 1; $i ++) {
          for (my $j = $i + 1; $j < @sets; $j ++ ) {
             my @spliced_set = @sets;
@@ -100,18 +99,14 @@ sub GetGroups{
             $lc= List::Compare->new(\@in_all, \@used);
             my @unique_to_set = $lc->get_unique;
             if ( @unique_to_set > 0 ) {
-              print OUT join(", ", @spliced_files), ":\n";
-              #print OUT join(", ", @unique_to_set), "\n";
-              print OUT SplitArray(@unique_to_set), "\n";
+               print join(", ", @spliced_files), "(", scalar(@unique_to_set), "):\n";
+               print SplitArray(@unique_to_set), "\n";
             }
-            print join(", ", @spliced_files), ": ";
-            print scalar(@unique_to_set), "\n";
             @used =(@used, @unique_to_set);       
          }  
       }
    }
    if ( @sets > 4 ) {
-      print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n";
       for (my $i = 0; $i < @sets - 2; $i ++) {
          for (my $j = $i + 1; $j < @sets; $j ++ ) {
             for ( my $k = $j + 1; $k < @sets; $k ++ ) {
@@ -128,35 +123,23 @@ sub GetGroups{
                $lc= List::Compare->new(\@in_all, \@used);
                my @unique_to_set = $lc->get_unique;
                if ( @unique_to_set > 0 ) {
-                 print OUT join(", ", @spliced_files), ":\n";
-                 #print OUT join(", ", @unique_to_set), "\n";
-                 print OUT SplitArray(@unique_to_set), "\n";
+                  print join(", ", @spliced_files), "(", scalar(@unique_to_set), "):\n";
+                  print SplitArray(@unique_to_set), "\n";
                }
-               print join(", ", @spliced_files), ": ";
-               print scalar(@unique_to_set), "\n";
                @used =(@used, @unique_to_set);    
             }   
          }  
       }
    }
-   print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n";
    for (my $i = 0; $i < @sets; $i ++) {
       my @spliced_set = @{$sets[$i]}; 
       my $spliced_file = $files[$i];
-      #print $spliced_file, ": ";
-      #print OUT $spliced_file, ": ";
-      $lc= List::Compare->new(\@spliced_set, \@used);
+       $lc= List::Compare->new(\@spliced_set, \@used);
       my @unique_to_set = $lc->get_unique;
       if ( @unique_to_set > 0 ) {
          print "$spliced_file (", scalar(@unique_to_set), "):\n";
-         #print OUT join(", ", @unique_to_set), "\n";
-         #print OUT SplitArray(@unique_to_set), "\n";
-         foreach (@unique_to_set) {
-           print "$_\n";
-         }
+         print SplitArray(@unique_to_set), "\n";
       }
-      #print "$spliced_file: ";
-      #print scalar(@unique_to_set), "\n";
       @used =(@used, @unique_to_set);       
    }
 }
@@ -165,11 +148,11 @@ sub SplitArray {
   my @list = @_;
   my @split_array = ();
   while ( @list > 20 ) {
-    print OUT @split_array, join(", ", @list[0..19]) . "\n";
+    push(@split_array, join(", ", @list[0..19]) . "\n");
     splice(@list, 0, 20);
   }
   if ( @list > 0 ) {
-    print OUT @split_array, join(", ", @list) . "\n";
+    push(@split_array, join(", ", @list) . "\n");
   }
   return @split_array;
 }
@@ -271,6 +254,5 @@ sub GetVenn {
       cat.fontfamily='sans'
       )\n";
 }
-#########################################################################################
-open(my $out, ">", 'groups.txt');
+
 
