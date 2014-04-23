@@ -28,9 +28,9 @@ Options:
 
 use strict;
 use warnings;
-use List::Compare;
 use List::MoreUtils qw(uniq);
 use File::Basename;
+use List::Compare;
 
 my @sets;
 my @files; 
@@ -51,95 +51,108 @@ foreach(@ARGV) {
   @names = uniq(@names);
   push(@sets, \@names);
 }
-print "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items (type library(VennDiagram) to view in R)\n";
 
-if ( @sets == 2 ) {
-  print "ven.plot<-draw.pairwise.venn(\n";
-}
-elsif ( @sets == 3 ) {
-  print "ven.plot<-draw.triple.venn(\n";
-}
-elsif ( @sets == 4 ) {
-  print "venn.plot <- draw.quad.venn(\n";
-}
-elsif ( @sets == 5 ) {
-  print "venn.plot <- draw.quintuple.venn(\n";
-}
-else { die "This script currently only produces pariwise to quintuple Venn plots\n"; }
+GetVenn(\@sets, \@files);
 
-for (my $i = 0; $i < @sets; $i ++) { 
-  print "  area", $i+1, " = ", scalar(@{$sets[$i]}), ",\n";
-}
+#open(my $out, ">", 'groups.txt');
 
-for (my $i = 0; $i < @sets - 1; $i ++) {
-  for (my $j = $i + 1; $j < @sets; $j ++ ) {
-    my $lc= List::Compare->new($sets[$i], $sets[$j]);
-    if ( @sets == 2 ) {     
-      print "  cross.area = ", scalar($lc->get_intersection), ",\n";
-    }
-    else {
-      print "  n", $i+1, $j+1, " = ", scalar($lc->get_intersection), ",\n";
-    }
-  }
-}
+sub GetVenn {
+   my $set_ref = shift; 
+   my @sets = @{$set_ref};
+   my $file_ref = shift; 
+   my @files = @{$file_ref};
+   
+   print "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items (type library(VennDiagram) to view in R)\n";
 
-for (my $i = 0; $i < @sets - 2; $i ++) {
-  for (my $j = $i + 1; $j < @sets - 1; $j ++ ) {
-    for ( my $k = $j + 1; $k < @sets; $k ++ ) {
-      my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k]);
-      print "  n", $i+1, $j+1, $k+1, " = ", scalar($lc->get_intersection), ",\n";
-    }
-  }
-}
+   if ( @sets == 2 ) {
+      print "ven.plot<-draw.pairwise.venn(\n";
+   }
+   elsif ( @sets == 3 ) {
+      print "ven.plot<-draw.triple.venn(\n";
+   }
+   elsif ( @sets == 4 ) {
+      print "venn.plot <- draw.quad.venn(\n";
+   }
+   elsif ( @sets == 5 ) {
+      print "venn.plot <- draw.quintuple.venn(\n";
+   }
+   else { die "This script currently only produces pariwise to quintuple Venn plots\n"; }
 
-for (my $i = 0; $i < @sets - 3; $i ++) {
-  for (my $j = $i + 1; $j < @sets - 2; $j ++ ) {
-    for ( my $k = $j + 1; $k < @sets - 1; $k ++ ) {
-      for ( my $l = $k + 1; $l < @sets; $l ++ ) {      
-        my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k], $sets[$l]);
-        print "  n", $i+1, $j+1, $k+1, $l+1, " = ", scalar($lc->get_intersection), ",\n";
+   for (my $i = 0; $i < @sets; $i ++) { 
+      print "  area", $i+1, " = ", scalar(@{$sets[$i]}), ",\n";
+   }
+
+   for (my $i = 0; $i < @sets - 1; $i ++) {
+      for (my $j = $i + 1; $j < @sets; $j ++ ) {
+         my $lc= List::Compare->new($sets[$i], $sets[$j]);
+         if ( @sets == 2 ) {     
+            print "  cross.area = ", scalar($lc->get_intersection), ",\n";
+         }
+         else {
+            print "  n", $i+1, $j+1, " = ", scalar($lc->get_intersection), ",\n";
+         }
       }
-    }
-  }
-}
+   }
 
-for (my $i = 0; $i < @sets - 4; $i ++) {
-  for (my $j = $i + 1; $j < @sets - 3; $j ++ ) {
-    for ( my $k = $j + 1; $k < @sets - 2; $k ++ ) {
-      for ( my $l = $k + 1; $l < @sets -1; $l ++ ) {
-        for ( my $m = $l + 1; $m < @sets; $m ++ ) {    
-          my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k], $sets[$l], $sets[$m]);
-          print "  n", $i+1, $j+1, $k+1, $l+1, $m+1, " = ", scalar($lc->get_intersection), ",\n";
-        }
+   for (my $i = 0; $i < @sets - 2; $i ++) {
+      for (my $j = $i + 1; $j < @sets - 1; $j ++ ) {
+         for ( my $k = $j + 1; $k < @sets; $k ++ ) {
+            my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k]);
+            print "  n", $i+1, $j+1, $k+1, " = ", scalar($lc->get_intersection), ",\n";
+         }
       }
-    }
-  }
-}
+   }
 
-print "  category = c('", join("','", @files), "'),\n";
-if ( @sets == 2) {
-  print "  fill = c('blue', 'red'),
-  cat.col = c('blue', 'red'),\n";
-}  
-elsif ( @sets == 3 ) {
-  print "  fill = c('blue', 'red', 'green'),
-  cat.col = c('blue', 'red', 'green'),\n";
-}
-elsif ( @sets == 4 ) {
-  print "  fill = c('orange', 'red', 'green', 'blue'),
-  cat.col = c('orange', 'red', 'green', 'blue'),\n";
-}
-else {
-  print "  fill = c('orange', 'red', 'green', 'blue', 'purple'),
-  cat.col = c('orange', 'red', 'green', 'blue', 'purple'),\n";
-}
+   for (my $i = 0; $i < @sets - 3; $i ++) {
+      for (my $j = $i + 1; $j < @sets - 2; $j ++ ) {
+         for ( my $k = $j + 1; $k < @sets - 1; $k ++ ) {
+            for ( my $l = $k + 1; $l < @sets; $l ++ ) {      
+               my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k], $sets[$l]);
+               print "  n", $i+1, $j+1, $k+1, $l+1, " = ", scalar($lc->get_intersection), ",\n";
+            }
+         }
+      }
+   }
 
-print "  lty = 'blank',
-  cex = 2,
-  cat.cex = 1.75,
-  margin=0.05,
-  fontfamily='sans',
-  cat.fontfamily='sans'
- )\n";
+   for (my $i = 0; $i < @sets - 4; $i ++) {
+      for (my $j = $i + 1; $j < @sets - 3; $j ++ ) {
+         for ( my $k = $j + 1; $k < @sets - 2; $k ++ ) {
+            for ( my $l = $k + 1; $l < @sets -1; $l ++ ) {
+               for ( my $m = $l + 1; $m < @sets; $m ++ ) {    
+                  my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k], $sets[$l], $sets[$m]);
+                  print "  n", $i+1, $j+1, $k+1, $l+1, $m+1, " = ", scalar($lc->get_intersection), ",\n";
+               }
+            }
+         }
+      }
+   }
 
-	
+   print "  category = c('", join("','", @files), "'),\n";
+   if ( @sets == 2) {
+      print "  fill = c('blue', 'red'),
+             cat.col = c('blue', 'red'),\n";
+   }  
+   elsif ( @sets == 3 ) {
+      print "  fill = c('blue', 'red', 'green'),
+         cat.col = c('blue', 'red', 'green'),\n";
+   }
+   elsif ( @sets == 4 ) {
+      print "  fill = c('orange', 'red', 'green', 'blue'),
+         cat.col = c('orange', 'red', 'green', 'blue'),\n";
+   }
+   else {
+      print "  fill = c('orange', 'red', 'green', 'blue', 'purple'),
+         cat.col = c('orange', 'red', 'green', 'blue', 'purple'),\n";
+   }
+
+   print "  lty = 'blank',
+      cex = 2,
+      cat.cex = 1.75,
+      margin=0.05,
+      fontfamily='sans',
+      cat.fontfamily='sans'
+      )\n";
+}
+#########################################################################################
+open(my $out, ">", 'groups.txt');
+
