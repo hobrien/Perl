@@ -1,12 +1,11 @@
 #!/opt/local/bin/python
 
 
-import sys, warnings, string
+import sys, warnings, string, os
 import sqlite3
 import csv
 import re
 from Bio import AlignIO
-from Bio.Seq import Seq
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio.Alphabet import IUPAC
@@ -16,6 +15,37 @@ def warning_on_one_line(message, category, filename, lineno, file=None, line=Non
     return ' %s:%s: %s: %s\n' % (filename, lineno, category.__name__, message)
 
 warnings.formatwarning = warning_on_one_line
+
+def make_seq(seqstr, id):
+   alpha = IUPAC.unambiguous_dna
+   seq = Seq(seqstr, alpha)
+   seqrec =  SeqRecord(seq, id=id)
+   return seqrec
+ 
+def parse_xmfa(fh):
+    alignments = []
+    sequences = []
+    id = ''
+    seqstr = ''
+    for line in fh:
+      line = line.strip()
+      if line[0] == '#' or line == '':
+        pass
+      elif line == '=':
+        sequences.append(make_seq(seqstr, id))
+        alignments.append(MultipleSeqAlignment( sequences ))
+        seqstr = ''
+        id = ''
+        sequences = []
+      elif line[0] == '>':
+        if seqstr:
+          sequences.append(make_seq(seqstr, id))
+        id = line[1:].strip()
+        seqstr = ''
+      else:
+        seqstr += line
+    return(alignments)  
+
 
 def six_frame_translation (seq):
   translations = []
@@ -436,7 +466,14 @@ if __name__ == "__main__":
   print get_orf(seq[:23], 15, 21).seq  
   print "Testing get_orf with stop codon between start and homologous region:"
   print get_orf(seq, 27, 32).seq
-  print "Testting get_orf with frameshift:"
+  print "Testing get_orf with frameshift:"
   seq = SeqRecord(Seq("TTTAGTTTTTTATGTTTTTTTTTTTAGTTTTAG", IUPAC.unambiguous_dna), id='test_seq')
   print  get_orf(seq, 15, 21).seq
+  print "Testing parse_xmfa"
+  fh = open(os.path.join(os.path.expanduser('~'), 'Perl', 'test', 'test.xmfa'), 'r')
+  alignments = parse_xmfa(fh)
+  print len(alignments)
+  print len(alignments[0])
+  print len(alignments[0][0])
+
   

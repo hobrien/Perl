@@ -1,4 +1,4 @@
-from Heathpy import make_hash, remove_dots, write_phylip, six_frame_translation, find_CaaX
+from Heathpy import make_hash, remove_dots, write_phylip, six_frame_translation, find_CaaX, parse_xmfa
 from StringIO import StringIO
 from Bio.Alphabet import generic_dna, IUPAC
 from Bio.Seq import Seq
@@ -6,7 +6,9 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment
 import tempfile, os, warnings
 from nose.tools import *
+from nose import with_setup
 
+"""This is to be used with nosetests: 'nosetests ~/Perl' """
 test_dir = os.path.join(os.path.expanduser('~'), 'Perl', 'test')
 
 def test_make_hash1():
@@ -127,4 +129,15 @@ def test_find_CaaX():
   assert len(find_CaaX(coding_dna)) == 0
   coding_dna = Seq("ATGGCCATTGTAATGGGCCGCTGGTGTGCTGCCCGATAG", IUPAC.unambiguous_dna)
   assert len(find_CaaX(coding_dna)) == 1
-  
+
+def test_parse_xmfa():
+  file = os.path.join(test_dir, 'test.xmfa')
+  print file
+  fh = open(file, 'r')
+  alignments = parse_xmfa(fh)
+  fh.close()
+  assert len(alignments) == 2
+  assert len(alignments[0]) == 2
+  assert len(alignments[0][0]) == 20
+
+
