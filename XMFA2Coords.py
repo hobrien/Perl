@@ -17,3 +17,31 @@ def parse_id(id):
   else:
     raise TypeError("strand information should be either '+' or '-'")
   return (start, strand, name)
+
+def parse_coords(aln)
+  """This takes an alignment where sequence ids are formatted using Mauve formatting
+  and produces a list of matching coordinates for each sequence, with the name of the
+  sequence separated from the position with a colon."""
+  coord_array = []    # list of homologous positions
+  column_coords = []  # current coordinate position for each seq in alignment
+  strands = [] # list of strand information for each seq in alignment
+  names = [] # list of sequence names
+  for seq in aln:
+    (start, strand, name) = parse_id(seq.id)
+    names.append(name)
+    strands.append(strand)
+    column_coords.append(start)
+  for x in len(aln):
+    row_coords = []
+    slice = aln[:, x]
+    for y in len(slice):
+      if slice[y] != '-':
+        row_coords.append(names[y] + ':' + column_coords[y])
+        if strands[y] == '+':
+          column_coords[y] ++
+        else:
+          column_coords[y] --
+      else:
+        row_coords.append('-')  
+    coord_array.append(row_coords)
+  return coord_array
