@@ -18,7 +18,7 @@ def parse_id(id):
     raise TypeError("strand information should be either '+' or '-'")
   return (start, strand, name)
 
-def parse_coords(aln)
+def parse_coords(aln):
   """This takes an alignment where sequence ids are formatted using Mauve formatting
   and produces a list of matching coordinates for each sequence, with the name of the
   sequence separated from the position with a colon."""
@@ -31,16 +31,16 @@ def parse_coords(aln)
     names.append(name)
     strands.append(strand)
     column_coords.append(start)
-  for x in len(aln):
+  for x in range(len(aln[0])):
     row_coords = []
     slice = aln[:, x]
-    for y in len(slice):
+    for y in range(len(slice)):
       if slice[y] != '-':
-        row_coords.append(names[y] + ':' + column_coords[y])
+        row_coords.append(names[y] + ':' + str(column_coords[y]))
         if strands[y] == '+':
-          column_coords[y] ++
+          column_coords[y] += 1
         else:
-          column_coords[y] --
+          column_coords[y] -= 1
       else:
         row_coords.append('-')  
     coord_array.append(row_coords)
