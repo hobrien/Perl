@@ -1,5 +1,6 @@
 #!/opt/local/bin/python
-
+import sys
+from Heathpy import parse_xmfa
 
 def parse_id(id):
   id_parts = id.split(' ')
@@ -45,3 +46,9 @@ def parse_coords(aln):
         row_coords.append('-')  
     coord_array.append(row_coords)
   return coord_array
+
+if __name__ == "__main__":
+   fh = open(sys.argv[1], 'r')
+   for alignment in parse_xmfa(fh):
+     for row in parse_coords(alignment):
+       print ", ".join(row)
