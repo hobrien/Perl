@@ -50,5 +50,7 @@ def parse_coords(aln):
 if __name__ == "__main__":
    fh = open(sys.argv[1], 'r')
    for alignment in parse_xmfa(fh):
+     if len(alignment) < 2:
+       continue
      for row in parse_coords(alignment):
        print ", ".join(row)
