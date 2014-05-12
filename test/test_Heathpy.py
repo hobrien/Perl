@@ -4,7 +4,7 @@ from Bio.Alphabet import generic_dna, IUPAC
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment
-import tempfile, os, warnings
+import os, warnings
 from nose.tools import *
 from nose import with_setup
 
@@ -137,7 +137,7 @@ def test_parse_xmfa():
   alignments = parse_xmfa(fh)
   fh.close()
   assert len(alignments) == 2
-  assert len(alignments[0]) == 2
-  assert len(alignments[0][0]) == 20
+  assert len(alignments[0]) == 3
+  assert len(alignments[0][0]) == 12
 
 

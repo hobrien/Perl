@@ -8,17 +8,17 @@
 #Annotation2File	/Users/HeathOBrien/Bioinformatics/Psuedomonas/CP000058.gbk
 #Annotation2Format	GenBank
 #BackboneFile	/Users/HeathOBrien/Bioinformatics/Psuedomonas/DC300_1448A.xmfa.bbcols
-> 1:1-20 + /Users/HeathOBrien/Bioinformatics/Psuedomonas/AE016853.gbk
-gcatggaatg
-cagttttatc
-> 2:101-119 + /Users/HeathOBrien/Bioinformatics/Psuedomonas/AE016853.gbk
-cacaggcgag
-tt-gtgcaca
+> 1:1-12 + Seq1
+ACTGCTAGCTAG
+> 2:2-12 + Seq2
+ACT-CTAGCCAG
+> 3:9-20 - Seq3
+ACTGCTAGCTAG
 =
-> 1:21-40 - /Users/HeathOBrien/Bioinformatics/Psuedomonas/AE016853.gbk
-gcatggaatg
-cagttttatc
-> 2:20-38 + /Users/HeathOBrien/Bioinformatics/Psuedomonas/AE016853.gbk
-cacaggcgag
-tt-gtgcaca
+> 1:13-24 + Seq1
+ACTGCTAGCTAG
+> 2:13-23 - Seq4
+ACT-CTAGCCAG
+> 3:1-8 - Seq3
+ACT----GCCAG
 =
