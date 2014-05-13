@@ -43,7 +43,7 @@ def parse_coords(aln):
         else:
           column_coords[y] -= 1
       else:
-        row_coords.append('-')  
+        row_coords.append('-:-')  
     coord_array.append(row_coords)
   return coord_array
 

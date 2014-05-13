@@ -61,7 +61,7 @@ def test_XMFA2Coords():
     print coords[0]
     assert coords[0] == "Seq1:1, Seq2:2, Seq3:20"
     print coords[15]
-    assert coords[15] == "Seq1:16, -, -"
+    assert coords[15] == "Seq1:16, -:-, -:-"
     print coords[23]
     assert coords[23] == "Seq1:24, Seq4:13, Seq3:1"
     
