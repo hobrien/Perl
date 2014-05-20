@@ -3,7 +3,14 @@
 import csv, sys, subprocess, argparse, os
 from Bio import SeqIO
 
-"""This will identify the query sequence with the highest bitscore for each subject sequence.
+"""
+ParseBlast.py
+
+20 May 2014
+
+Heath O'Brien (heath.obrien-at-gmail-dot-com
+
+This will identify the query sequence with the highest bitscore for each subject sequence.
 For tblastn searches, it will extract the subject sequences for each hsp from this query /
 subject pair, translate them and concatinate them (separated by an 'X'). For blastp searches
 it will simply extract the sequences and names them according to the top query sequence.
@@ -13,6 +20,8 @@ extended.
 This script requires biopython (see http://biopython.org/DIST/docs/install/Installation.html)
 
 Type ParseBlast.py --help for instructions
+
+
 """
 
 def parse_blast(args):
@@ -29,7 +38,10 @@ def parse_blast(args):
       seq_list = []
       for coord in combine_hits(result):
         seq_list.append(str(get_seq(args, subject, coord[0], coord[1], strand)))
-        seq = 'X'.join(seq_list)
+        if args.translate:
+          seq = 'X'.join(seq_list)
+        else:
+          seq = 'NNN'.join(seq_list)
     else:
       seq = str(get_seq(args, subject))
     print header
@@ -44,7 +56,7 @@ def get_seq(args, seqname, start = 1 , end = -1, strand = 1):
   seq = sequence_db[seqname][start-1:end].seq
   if strand < 0:
     seq = seq.reverse_complement()
-  if args.program == 'tblastn':
+  if args.translate and args.program == 'tblastn':
     seq = seq.translate()
   return seq  
 
@@ -156,8 +168,11 @@ if __name__ == "__main__":
                    help='maximum Evalue cutoff')
   parser.add_argument('--program', '-p', dest='program', default='', type=str,
                    help='blast program (tblastn or blastp)')  
-  parser.add_argument('--outfmt', '-f', dest='column_names', default='qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore', type=str,
+  parser.add_argument('--outfmt', '-f', dest='column_names', 
+                   default='qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore', type=str,
                    help='blast output fields (default: standard -m 8 output)')  
+  parser.add_argument('--translate', '-t', action="store_true",
+                   help='translate DNA sequences (tblastn only)')  
   parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
   args = parser.parse_args()
   args.column_names = args.column_names.replace('6 ', '')  #This is a hack that allows me to use the full custom fields specification from the the blast -outfmt command as input for this. 
