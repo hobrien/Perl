@@ -80,7 +80,7 @@ def parse_blast_stats(column_names, row):
   result = {}
   for field in column_names.split():
     try:
-      if field in ('qlen', 'slen', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'qframe', 'sstart', 'send', 'sframe'):
+      if field in ('qlen', 'slen', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'qframe', 'sstart', 'send', 'sframe', 'sstrand'):
         result[field] = int(row.pop(0))
       elif field in ('pident', 'evalue', 'bitscore'):
         result[field] = float(row.pop(0))
@@ -90,6 +90,11 @@ def parse_blast_stats(column_names, row):
       sys.exit("number of columns does not match specified file format1. Please recheck column headers")
   if len(row) > 0:
     sys.exit("number of columns does not match specified file format. Please recheck column headers")
+  if result['sstart'] < result['send']:
+    result['strand'] = 1
+  else:
+    result['strand'] = -1
+  
   return result    
   
 def combine_hits(results):
@@ -105,10 +110,10 @@ def combine_hits(results):
   strand = 1
   for result in results:
     if sstarts:
-      if 'strand' * result['sframe'] < 0: #the second part of this checks if the strand is the same (neg * pos would be < 0)
+      if 'strand' * result['strand'] < 0: # checks if the strand is the same (neg * pos would be < 0)
         continue
-    if result['sframe'] < 0:
-      strand = -1
+    else:
+      strand = result['strand']
     qstarts.append(result['qstart'])
     qends.append(result['qend'])
     sstarts.append(result['sstart'])
