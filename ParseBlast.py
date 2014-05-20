@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
-"""This script"""
 
 import csv, sys, subprocess, argparse, os
+from Bio import SeqIO
 
 def parse_tblastn(args):
   assembly = args.seqfilename
@@ -9,19 +9,21 @@ def parse_tblastn(args):
   results = top_query(args)
   for result in results.values():
     subject = result[0]['sseqid']
+    strand = result[0]['strand']
     header = ">" + species_name +"_" + result[0]['qseqid']
     seq = []
     for coord in combine_hits(result):
-      if result[0]['sframe'] < 0:
-        proc = subprocess.Popen(["GetSeq.pl %s %s | trunc.pl %s %s | rc.pl | translate.pl" % tuple([assembly, subject] + coord)], stdout=subprocess.PIPE, shell=True)
-      else:
-        proc = subprocess.Popen(["GetSeq.pl %s %s | trunc.pl %s %s | translate.pl" % tuple([assembly, subject] + coord)], stdout=subprocess.PIPE, shell=True)
-      (res, err) = proc.communicate()
-      seq.append(''.join(res.split('\n')[1:-1]))
+      seq.append(str(get_seq(assembly, args.index_filename, subject, coord[0], coord[1], strand)))
     print header
     print 'X'.join(seq)
 
-
+def get_seq(seqfile, index, seqname, start, end, strand):
+  sequence_db = SeqIO.index_db(index, seqfile, 'fasta')
+  seq = sequence_db[seqname][start-1:end].seq
+  if strand < 0:
+    seq = seq.reverse_complement()
+  seq = seq.translate()
+  return seq  
 
 def parse_blastp(argv):
   blastfilename = args.blastfilename   #List of top blast hits for each SUBJECT sequence
@@ -136,11 +138,13 @@ def combine_hits(results):
       coords.append([send, sstart - overlap])
   return coords
         
-
 if __name__ == "__main__":
+#=================== BEGIN ARGUMENT PARSING  =======================
   parser = argparse.ArgumentParser(description="Extract subject sequences from top scoring blast hit")
   parser.add_argument('blastfilename', help='name of blast outfile')
-  parser.add_argument('seqfilename', help='name of sequence (fasta format)')
+  parser.add_argument('seqfilename', help='Name of sequence file (fasta format)')
+  parser.add_argument('--index_filename', '-i', dest='index_filename', default='',
+                   help='Name of sequence index file (SQLLite3 database created by biopython)')
   parser.add_argument('--subject_name', '-n', dest='subject_name', default='',
                    help='Name of the subject organism')
   parser.add_argument('--evalue', '-e', dest='evalue', default=10, type=float,
@@ -177,6 +181,8 @@ if __name__ == "__main__":
       sys.exit()
   if not args.subject_name:
       args.subject_name = os.path.basename(args.seqfilename).split('.')[0]
+  if not args.index_filename:
+      args.index_filename = '.'.join(args.seqfilename.split('.')[:-1] + ['inx'])
       
 #=================== END ARGUMENT PARSING  =======================
   if args.program =='tblastn':
