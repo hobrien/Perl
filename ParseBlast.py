@@ -3,7 +3,23 @@
 import csv, sys, subprocess, argparse, os
 from Bio import SeqIO
 
+"""This will identify the query sequence with the highest bitscore for each subject sequence.
+For tblastn searches, it will extract the subject sequences for each hsp from this query /
+subject pair, translate them and concatinate them (separated by an 'X'). For blastp searches
+it will simply extract the sequences and names them according to the top query sequence.
+At the moment, it does not work with other kinds of blast searches, but it could easily be
+extended.
+
+This script requires biopython (see http://biopython.org/DIST/docs/install/Installation.html)
+
+Type ParseBlast.py --help for instructions
+"""
+
 def parse_blast(args):
+  """for tblastn, combines subject sequence from multiple hsps into a single sequences
+  for blastp, it just retrieves complete sequences. Only one sequence is retrieved per
+  subject sequence (corresponding to the highest-scoring query). This will cause problems
+  if there are multiple homologs of the query on the same sequence.)"""
   results = top_query(args)
   for result in results.values():
     subject = result[0]['sseqid']
@@ -20,6 +36,9 @@ def parse_blast(args):
     print seq
       
 def get_seq(args, seqname, start = 1 , end = -1, strand = 1):
+  """builds a biopython database file for the subject sequences and retrieves the specified
+  portion of the specified sequence, reverse-complementing if necessary and translating
+  dna sequences."""
   sequence_db = SeqIO.index_db(args.index_filename, args.seqfilename, 'fasta')
   #seq = sequence_db[seqname][start-1:end].seq
   seq = sequence_db[seqname][start-1:end].seq
@@ -36,7 +55,10 @@ def top_query(args):
   sequences on two contigs, the result will be (contig1:[hsp1, hsp2, hsp3], contig2:[hsps1, hsp2, hsp3])
   -Each value contains a list of all hsps from the top scoring query sequence for that contg
   -Note that this will exclude cases where multiple homologs are found on the same contig
-  """  
+  
+  -This assumes that multiple hsps for query / subject combination are sorted according to
+  bit score. It may fail to correctly determine the highest-scoring query for a given
+  subject if this is not the case"""  
   
   top_hits = {}
   blastfilename = args.blastfilename
@@ -86,7 +108,6 @@ def parse_blast_stats(column_names, row):
 def combine_hits(results):
   """This will return a sorted list of subject coordinate pairs with parts that overlap the
   query removed"""
-  max_intron_length = 1000
   qstarts = []
   qends = []
   sstarts = []
