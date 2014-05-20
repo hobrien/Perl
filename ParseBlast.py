@@ -1,6 +1,7 @@
 #!/usr/local/bin/python
+"""This script"""
 
-import csv, sys, subprocess
+import csv, sys, subprocess, argparse, os
 
 def parse_tblastn(argv):
   fullblastfilename = argv[0]   #List of top blast hits for each SUBJECT sequence
@@ -101,9 +102,30 @@ def combine_hits(hits):
         
 
 if __name__ == "__main__":
-  if 'tblastn' in sys.argv[1]:
-    parse_tblastn(sys.argv[1:])
-  elif 'blastp' in sys.argv[1]:
-    parse_blastp(sys.argv[1:])
+  parser = argparse.ArgumentParser(description="Extract subject sequences from top scoring blast hit")
+  parser.add_argument('filename', help='name of blast outfile')
+  parser.add_argument('--evalue', '-e', dest='evalue', default=10, type=float,
+                   help='maximum Evalue cutoff')
+  parser.add_argument('--program', '-p', dest='program', default='', type=str,
+                   help='blast program (tblastn or blastp)')  
+  parser.add_argument('--out_format', '-f', dest='column_names', default='qseqid sacc pident length mismatch gapopen qstart qend sstart send evalue bitscore', type=str,
+                   help='blast output fields (default: standard -m 8 output)')  
+  parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
+  args = parser.parse_args()
+  if not args.program:
+    if 'tblastn' in args.filename:
+      args.program = 'tblastn'
+    elif 'tblastn' in args.filename:
+      args.program = 'blastp'
+    else:
+      print "can't determine blast algorithm from file name %s. Please specify with the --program option" % args.filename
+      print "type %s --help for more information" % os.path.basename(sys.argv[0])
+      sys.exit()
+  if args.program =='tblastn':
+    parse_tblastn(args)
+  elif args.program == 'blastp':
+    parse_blastp(args)
   else:
-    sys.exit("can't determine blast algorithm from file name %s" % sys.argv[1])
+    print "blast program not recognized. Please specify either '--program blastp' or '--program tblastn'"
+    print "type %s --help for more information" % os.path.basename(sys.argv[0])
+    sys.exit()
