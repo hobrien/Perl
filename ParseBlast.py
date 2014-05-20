@@ -3,47 +3,31 @@
 import csv, sys, subprocess, argparse, os
 from Bio import SeqIO
 
-def parse_tblastn(args):
-  assembly = args.seqfilename
-  species_name = args.subject_name
+def parse_blast(args):
   results = top_query(args)
   for result in results.values():
     subject = result[0]['sseqid']
     strand = result[0]['strand']
-    header = ">" + species_name +"_" + result[0]['qseqid']
-    seq = []
-    for coord in combine_hits(result):
-      seq.append(str(get_seq(assembly, args.index_filename, subject, coord[0], coord[1], strand)))
+    header = ">" + args.subject_name +"_" + result[0]['qseqid']
+    if args.program == 'tblastn':
+      seq_list = []
+      for coord in combine_hits(result):
+        seq_list.append(str(get_seq(args, subject, coord[0], coord[1], strand)))
+        seq = 'X'.join(seq_list)
+    else:
+      seq = str(get_seq(args, subject))
     print header
-    print 'X'.join(seq)
-
-def get_seq(seqfile, index, seqname, start, end, strand):
-  sequence_db = SeqIO.index_db(index, seqfile, 'fasta')
+    print seq
+      
+def get_seq(args, seqname, start = 1 , end = -1, strand = 1):
+  sequence_db = SeqIO.index_db(args.index_filename, args.seqfilename, 'fasta')
+  #seq = sequence_db[seqname][start-1:end].seq
   seq = sequence_db[seqname][start-1:end].seq
   if strand < 0:
     seq = seq.reverse_complement()
-  seq = seq.translate()
+  if args.program == 'tblastn':
+    seq = seq.translate()
   return seq  
-
-def parse_blastp(argv):
-  blastfilename = args.blastfilename   #List of top blast hits for each SUBJECT sequence
-  assembly = args.seqfilename
-  species_name = fullblastfilename.split('/')[-1].split('_')[0]
-  evalue_cutoff = args.evalue
-  with open(blastfilename, 'rU') as f:
-    reader=csv.reader(f,delimiter='\t')
-    for row in reader: 
-      #Get blast stats and covert to numeric formats
-      query, qlen, subject, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore = convert_blast_stats(row)
-
-      if evalue > evalue_cutoff:
-        continue
-      header = ">Hygag_" + subject
-      proc = subprocess.Popen(["GetSeq.pl %s %s" % (assembly, subject)], stdout=subprocess.PIPE, shell=True)
-      (res, err) = proc.communicate()
-      seq = ''.join(res.split('\n')[1:-1])
-      print header
-      print seq
 
 def top_query(args):
   """returns a dictionary with subject sequences as keys and lists of all blast hsps for 
@@ -173,23 +157,20 @@ if __name__ == "__main__":
   if not args.program:
     if 'tblastn' in args.blastfilename:
       args.program = 'tblastn'
-    elif 'tblastn' in args.blastfilename:
+    elif 'blastp' in args.blastfilename:
       args.program = 'blastp'
     else:
       print "can't determine blast algorithm from file name %s. Please specify with the --program option" % args.blastfilename
       print "type %s --help for more information" % os.path.basename(sys.argv[0])
       sys.exit()
+  elif args.program not in ('tblastn', 'blastp'):
+    print "blast program not recognized. Please specify either '--program blastp' or '--program tblastn'"
+    print "type %s --help for more information" % os.path.basename(sys.argv[0])
+    sys.exit()    
   if not args.subject_name:
       args.subject_name = os.path.basename(args.seqfilename).split('.')[0]
   if not args.index_filename:
       args.index_filename = '.'.join(args.seqfilename.split('.')[:-1] + ['inx'])
-      
 #=================== END ARGUMENT PARSING  =======================
-  if args.program =='tblastn':
-    parse_tblastn(args)
-  elif args.program == 'blastp':
-    parse_blastp(args)
-  else:
-    print "blast program not recognized. Please specify either '--program blastp' or '--program tblastn'"
-    print "type %s --help for more information" % os.path.basename(sys.argv[0])
-    sys.exit()
+
+  parse_blast(args)
