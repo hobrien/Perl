@@ -3,17 +3,16 @@
 
 import csv, sys, subprocess, argparse, os
 
-def parse_tblastn(argv):
-  fullblastfilename = argv[0]   #List of top blast hits for each SUBJECT sequence
-  uniqueblastfilename = argv[1]
-  assembly = argv[2]
+def parse_tblastn(args):
+  blastfilename = args.blastfilename   #List of top blast hits for each SUBJECT sequence
+  assembly = args.seqfilename
   species_name = fullblastfilename.split('/')[-1].split('_')[0]
-  evalue_cutoff = float(argv[3])
-  with open(uniqueblastfilename, 'rU') as f:
+  evalue_cutoff = args.evalue
+  with open(blastfilename, 'rU') as f:
     reader=csv.reader(f,delimiter='\t')
     for row in reader: 
       #Get blast stats and covert to numeric formats
-      query, qlen, subject, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore = convert_blast_stats(row)
+      blast_result = parse_blast_stats(args.column_names, row)
 
       if evalue > evalue_cutoff:
         continue
@@ -33,11 +32,11 @@ def parse_tblastn(argv):
       print 'X'.join(seq)
 
 def parse_blastp(argv):
-  uniqueblastfilename = argv[0]   #List of top blast hits for each SUBJECT sequence
-  assembly = argv[1]
-  
-  evalue_cutoff = float(argv[2])
-  with open(uniqueblastfilename, 'rU') as f:
+  blastfilename = args.blastfilename   #List of top blast hits for each SUBJECT sequence
+  assembly = args.seqfilename
+  species_name = fullblastfilename.split('/')[-1].split('_')[0]
+  evalue_cutoff = args.evalue
+  with open(blastfilename, 'rU') as f:
     reader=csv.reader(f,delimiter='\t')
     for row in reader: 
       #Get blast stats and covert to numeric formats
@@ -52,8 +51,26 @@ def parse_blastp(argv):
       print header
       print seq
 
-def convert_blast_stats(result):
-  """This will convert stats from blast hits to the correct numeric formate"""
+def parse_blast_stats(column_names, row):
+  """This will convert stats from blast hits to the correct numeric format"""
+  result = {}
+  print column_names
+  print column_names.split()
+  for field in column_names.split():
+    try:
+      print field
+      if field in ('qlen', 'slen', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'qframe', 'sstart', 'send', 'sframe'):
+        result[field] = int(row.pop(0))
+      elif field in ('pident', 'evalue', 'bitscore'):
+        result[field] = float(row.pop(0))
+      else:  
+        result[field] = row.pop(0)
+    except IndexError:
+      sys.exit("number of columns does not match specified file format1. Please recheck column headers")
+  if len(row) > 0:
+    sys.exit("number of columns does not match specified file format. Please recheck column headers")
+  return result    
+    
   query, qlen, subject, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore = result
   qlen, slen, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe = map(lambda x: int(x), (qlen, slen, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe))
   pident, evalue, bitscore = map(lambda x: float(x), (pident, evalue, bitscore))
@@ -103,7 +120,8 @@ def combine_hits(hits):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Extract subject sequences from top scoring blast hit")
-  parser.add_argument('filename', help='name of blast outfile')
+  parser.add_argument('blastfilename', help='name of blast outfile')
+  parser.add_argument('seqfilename', help='name of sequence (fasta format)')
   parser.add_argument('--evalue', '-e', dest='evalue', default=10, type=float,
                    help='maximum Evalue cutoff')
   parser.add_argument('--program', '-p', dest='program', default='', type=str,
@@ -112,13 +130,14 @@ if __name__ == "__main__":
                    help='blast output fields (default: standard -m 8 output)')  
   parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
   args = parser.parse_args()
+  args.column_names = args.column_names.replace('6 ', '')  #This is a hack that allows me to use the full custom fields specification from the the blast -out_format command as input for this. 
   if not args.program:
-    if 'tblastn' in args.filename:
+    if 'tblastn' in args.blastfilename:
       args.program = 'tblastn'
-    elif 'tblastn' in args.filename:
+    elif 'tblastn' in args.blastfilename:
       args.program = 'blastp'
     else:
-      print "can't determine blast algorithm from file name %s. Please specify with the --program option" % args.filename
+      print "can't determine blast algorithm from file name %s. Please specify with the --program option" % args.blastfilename
       print "type %s --help for more information" % os.path.basename(sys.argv[0])
       sys.exit()
   if args.program =='tblastn':
