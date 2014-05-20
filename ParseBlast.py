@@ -4,32 +4,22 @@
 import csv, sys, subprocess, argparse, os
 
 def parse_tblastn(args):
-  blastfilename = args.blastfilename
   assembly = args.seqfilename
   species_name = args.subject_name
-  evalue_cutoff = args.evalue
-  with open(blastfilename, 'rU') as f:
-    reader=csv.reader(f,delimiter='\t')
-    for row in reader: 
-      #Get blast stats and covert to numeric formats
-      blast_result = parse_blast_stats(args.column_names, row)
-
-      if evalue > evalue_cutoff:
-        continue
-      #Get a list of all hits for the same query and subject (this is a bit of a hack, but it works)
-      proc = subprocess.Popen(["grep '%s' %s | grep %s" % (query, fullblastfilename, subject)], stdout=subprocess.PIPE, shell=True)
-      (blast_res, err) = proc.communicate()
-      header = ">" + species_name +"_" + query
-      seq = []
-      for coord in combine_hits(blast_res.split('\n')[:-1]):
-        if sframe < 0:
-          proc = subprocess.Popen(["GetSeq.pl %s %s | trunc.pl %s %s | rc.pl | translate.pl" % tuple([assembly, subject] + coord)], stdout=subprocess.PIPE, shell=True)
-        else:
-          proc = subprocess.Popen(["GetSeq.pl %s %s | trunc.pl %s %s | translate.pl" % tuple([assembly, subject] + coord)], stdout=subprocess.PIPE, shell=True)
-        (res, err) = proc.communicate()
-        seq.append(''.join(res.split('\n')[1:-1]))
-      print header
-      print 'X'.join(seq)
+  results = top_query(args)
+  for result in results.values():
+    subject = result[0]['sseqid']
+    header = ">" + species_name +"_" + result[0]['qseqid']
+    seq = []
+    for coord in combine_hits(result):
+      if result[0]['sframe'] < 0:
+        proc = subprocess.Popen(["GetSeq.pl %s %s | trunc.pl %s %s | rc.pl | translate.pl" % tuple([assembly, subject] + coord)], stdout=subprocess.PIPE, shell=True)
+      else:
+        proc = subprocess.Popen(["GetSeq.pl %s %s | trunc.pl %s %s | translate.pl" % tuple([assembly, subject] + coord)], stdout=subprocess.PIPE, shell=True)
+      (res, err) = proc.communicate()
+      seq.append(''.join(res.split('\n')[1:-1]))
+    print header
+    print 'X'.join(seq)
 
 
 
@@ -102,7 +92,7 @@ def parse_blast_stats(column_names, row):
     sys.exit("number of columns does not match specified file format. Please recheck column headers")
   return result    
   
-def combine_hits(hits):
+def combine_hits(results):
   """This will return a sorted list of subject coordinate pairs with parts that overlap the
   query removed"""
   max_intron_length = 1000
@@ -113,18 +103,16 @@ def combine_hits(hits):
   sframes = []
   coords = []
   strand = 1
-  for line in hits:
-    #Get blast stats and covert to numeric formats
-    query, qlen, subject, slen, pident, length, mismatch, gapopen, qstart, qend, qframe, sstart, send, sframe, evalue, bitscore = convert_blast_stats(line.split('\t'))
-    #make lists of coordinates for query and subject sequences
+  for result in results:
     if sstarts:
-      if strand * sframe < 0: #the second part of this checks if the strand is the same (neg * pos would be < 0)
+      if 'strand' * result['sframe'] < 0: #the second part of this checks if the strand is the same (neg * pos would be < 0)
         continue
-    if sframe < 0: strand = -1
-    qstarts.append(qstart)
-    qends.append(qend)
-    sstarts.append(sstart)
-    sends.append(send)
+    if result['sframe'] < 0:
+      strand = -1
+    qstarts.append(result['qstart'])
+    qends.append(result['qend'])
+    sstarts.append(result['sstart'])
+    sends.append(result['send'])
   #determine the correct sort order for hits
   sorted = qstarts[:] 
   sorted.sort()
@@ -170,7 +158,7 @@ if __name__ == "__main__":
        args.column_names = args.column_names.replace('qacc', 'qseqid')
     elif 'qgi' in args.column_names:
        args.column_names = args.column_names.replace('qgi', 'qseqid')
-  for field in ('sseqid', 'qseqid', 'bitscore', 'evalue'):
+  for field in ('sseqid', 'qseqid', 'bitscore', 'evalue', 'sstart', 'send', 'qstart', 'qend'):
     if field not in args.column_names:
       sys.exit("blast output must include %s" % field)
   if not args.program:
@@ -187,12 +175,7 @@ if __name__ == "__main__":
       
 #=================== END ARGUMENT PARSING  =======================
   if args.program =='tblastn':
-    results = top_query(args)
-    for key in results.keys():
-      print key, ':'
-      for result in results[key]:
-        print result['qseqid']
-    #parse_tblastn(args)
+    parse_tblastn(args)
   elif args.program == 'blastp':
     parse_blastp(args)
   else:
