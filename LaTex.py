@@ -34,7 +34,9 @@ def ConvertCiteKeys(line):
 """This works OK, though there may be a more efficient way to do it using regex"""
 def AddItalics(line):
   species = ['Cysoseira stricta', 'C. stricta', 'Cysoseira', 'Dictyota dichotoma', 'D. dichotoma', 'Dictyota', 
-  			 'Phaeodactylum tricornutum', 'Pseudo-nitzchia multiseries', 'Seminavis robusta', 
+  			 'Phaeodactylum tricornutum', 'Pseudo-nitzchia multiseries', 'Selaginella', 'Selaginella kraussiana', 
+  			 'S. kraussiana', 'Selaginella moellendorffii', 'S. moellendorffii', 'Selaginella uncinata',
+  			 'S. uncinata', 'Selaginella willdenowii', 'S. willdenowii', 'Seminavis robusta', 
   			 'Thalassiosira pseudonana', 'Thalassiosira punctigera',
              'Zonaria tournefortii', 'Z. tournefortii', 'Zonaria']
   for name in species:
@@ -44,14 +46,15 @@ def AddItalics(line):
 def ConvertSymbols(line):
   line = line.replace('µ', "\\textmu ")
   line = line.replace('&', "\& ")
+  line = line.replace('%', "\% ")
   return line
 
 def AddURL(line):
   """ adds \url tags to urls (unless already present). It searches for 'http://' followed 
   a string of valid url characters (including '%xx' unicode triplets) and ending with a
-  space or parenthesis/bracket (allowing parens within urls but not at the end
+  space or parenthesis/bracket (allowing parens and periods within urls but not at the end)
   """
-  line = re.sub(r'(\\url{)?(http://([!#$&-;=?-[\]_a-z~]|%[0-9a-fA-F]{2})+[^() [\]{}])}?', r'\url{\2}', line)
+  line = re.sub(r'(\\url{)?(http://([!#$&-;=?-[\]_a-z~]|%[0-9a-fA-F]{2})+[^(). [\]{}])}?', r'\url{\2}', line)
   return line
   
   # TODO: deal with urls that don't contain 'http://'
@@ -71,15 +74,22 @@ other formatting.
 Not only does pandoc ignore the LaTex control statements, it tends to garble them, so I am
 moving as many of them as possible to the second pass"""
 infile = sys.argv[1]
+if not '-formatted' in infile:
+  basename, ext = path.splitext(infile)
+  infile = basename + '-formatted' + ext
+  print infile
+  
 basename, ext = path.splitext(infile)
 basename = basename.replace('-formatted', '')
 if ext == 'tex':
   outfile = basename + '_out.tex'
 else:
   outfile = basename + '.tex'
-  
-in_fh = open(infile, 'r')
 
+try:  
+  in_fh = open(infile, 'r')
+except IOError:
+  sys.exit("File %s does not exist. Did you remember to format manuscript using Papers Citations?" % infile)
 #read first line of infile to obtain title
 title = in_fh.readline()
 
