@@ -1,10 +1,21 @@
 #!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 
-"""I am rapidly hitting the limits of what I can do with pandoc/bibtex and I hate having
-to maintain two databases. I'm going to remove the citation formatting from this and just
-do that with the Papers citation support. This means all I have to do is one pass with
-LaTex"""
+"""
+Heath's modified LaTex syntax:
+-these symbols are substituted for LaTex-conforming one when the script is run
+
+- µ is converted to \textmu (shows up as µ)
+- % is converted to \% (shows up as %)
+- & is converted to \& (shows up as &)
+
+- \t is converted to & (used as column separator in tables; must have spaces on either side)
+- \[ ... \] is converted to { ... } (used because Papers uses curly braces for citations)
+- /begin converted to \begin (used because \begin screws up Papers)
+- /end converted to \end (used because \end screws up Papers)
+
+
+"""
 
 import sys, re, subprocess
 from os import system, path
@@ -45,8 +56,9 @@ def AddItalics(line):
 
 def ConvertSymbols(line):
   line = line.replace('µ', "\\textmu ")
-  line = line.replace('&', "\& ")
+  line = line.replace('&', "\& ")  # this allows & signs to be retained in final document
   line = line.replace('%', "\% ")
+  line = line.replace(' \\t ', ' & ')  # since & signs are being retained, I will use tab characters as table separators
   return line
 
 def AddURL(line):
@@ -66,7 +78,21 @@ def pandoc(infile, outfile):
     options = ["pandoc", "--bibliography=" + latex_dir + "Papers.bibtex", "--csl=" + latex_dir + "journal-of-evolutionary-biology.csl", "--output=" + outfile, infile]
     return subprocess.check_call(options)
     
+def AddBraces(line):
+  """Papers is getting screwed up by LaTex commands using curly braces. The only solution 
+     I can come up with is to use a different symbol in place of { ... } and substitute
+     braces after Papers has done it's work"""
+  line = line.replace('\[', '{')
+  line = line.replace('\]', '}')
+  return line
 
+def BeginAndEnd(line):
+  """Papers also can't see to handle "\begin" or "\end" so I'm replacing the slashes with
+     back slashes that also need to be replaced after Papers has done it's work"""
+  line = line.replace('/begin', '\\begin')
+  line = line.replace('/end', '\end')
+  return line
+     
 """Due to SERIOUS limitations in Pandoc (at least how I'm using it), this needs to be done
 in 2 passes. One with Pandoc to format the references, then one with pdflatex to do all 
 other formatting.
@@ -126,6 +152,8 @@ for line in in_fh:
   line = AddItalics(line)
   line = ConvertSymbols(line)
   line = AddURL(line)
+  line = AddBraces(line)   # convert "\[ ... \]" to "{ ... }" (I need to use these because Papers uses braces)
+  line = BeginAndEnd(line)  # convert "/begin" or "/end" to "\begin" or "\end" to (this is another Papers workaround)
   if line == "\section*{References}": references = 1
   if references:
     out_fh.write(line + '\n\n')
@@ -135,4 +163,5 @@ in_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
 system("pdflatex %s" % outfile)
-system("rm %s %s.tex %s.log %s.aux %s.out" % (infile, basename, basename, basename, basename))
+#system("rm %s.tex %s.log %s.aux %s.out" % (basename, basename, basename, basename))
+#system("rm %s" % infile)
