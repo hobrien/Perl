@@ -8,11 +8,13 @@ Heath's modified LaTex syntax:
 - µ is converted to \textmu (shows up as µ)
 - % is converted to \% (shows up as %)
 - & is converted to \& (shows up as &)
+- # is converted to \# (shows up as #)
 
 - \t is converted to & (used as column separator in tables; must have spaces on either side)
 - \[ ... \] is converted to { ... } (used because Papers uses curly braces for citations)
 - /begin converted to \begin (used because \begin screws up Papers)
 - /end converted to \end (used because \end screws up Papers)
+- /rowfont converted to \rowfont (used because \rowfont screws up Papers)
 
 
 """
@@ -56,8 +58,9 @@ def AddItalics(line):
 
 def ConvertSymbols(line):
   line = line.replace('µ', "\\textmu ")
-  line = line.replace('&', "\& ")  # this allows & signs to be retained in final document
-  line = line.replace('%', "\% ")
+  line = line.replace('&', "\&")  # this allows & signs to be retained in final document
+  line = line.replace('%', "\%")
+  line = line.replace('#', "\#")
   line = line.replace(' \\t ', ' & ')  # since & signs are being retained, I will use tab characters as table separators
   return line
 
@@ -91,6 +94,7 @@ def BeginAndEnd(line):
      back slashes that also need to be replaced after Papers has done it's work"""
   line = line.replace('/begin', '\\begin')
   line = line.replace('/end', '\end')
+  line = line.replace('/rowfont', '\\rowfont')
   return line
      
 """Due to SERIOUS limitations in Pandoc (at least how I'm using it), this needs to be done
@@ -129,6 +133,7 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 \\usepackage{amssymb}
 \\usepackage{textgreek}
 \usepackage[colorlinks]{hyperref}
+\usepackage{tabu}
 \\begin{document}
 \\title{""" + title + """}
 \\author{Heath E. O'Brien\\\\
