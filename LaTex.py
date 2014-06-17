@@ -104,22 +104,36 @@ other formatting.
 Not only does pandoc ignore the LaTex control statements, it tends to garble them, so I am
 moving as many of them as possible to the second pass"""
 infile = sys.argv[1]
-if not '-formatted' in infile:
-  basename, ext = path.splitext(infile)
-  infile = basename + '-formatted' + ext
-  print infile
-  
 basename, ext = path.splitext(infile)
+if '-formatted' in infile:
+  formatted_file = infile
+  oringinal_file = infile.replace('-formatted', '')
+else:
+  original_file = infile
+  basename, ext = path.splitext(infile)
+  formatted_file = basename + '-formatted' + ext
+
+try:
+  original_file_modification = path.getmtime(original_file)
+except OSError:
+  sys.exit("File %s does not exist." % original_file)
+
+try:
+  formatted_file_modification = path.getmtime(formatted_file)
+except OSError:
+  sys.exit("File %s does not exist. Did you remember to format manuscript using Papers Citations?" % formatted_file)
+
+if ( original_file_modification > formatted_file_modification ): 
+  sys.exit("Papers formatted file is older than original. Reformat and try again")
+
+  
 basename = basename.replace('-formatted', '')
 if ext == 'tex':
   outfile = basename + '_out.tex'
 else:
   outfile = basename + '.tex'
 
-try:  
-  in_fh = open(infile, 'r')
-except IOError:
-  sys.exit("File %s does not exist. Did you remember to format manuscript using Papers Citations?" % infile)
+in_fh = open(formatted_file, 'r')
 #read first line of infile to obtain title
 title = in_fh.readline()
 
