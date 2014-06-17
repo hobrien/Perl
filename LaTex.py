@@ -45,6 +45,10 @@ def ConvertCiteKeys(line):
 
 
 """This works OK, though there may be a more efficient way to do it using regex"""
+def SpellCheck(line):
+  line = line.replace('moellendorfii', 'moellendorffii')
+  return line
+  
 def AddItalics(line):
   species = ['Cysoseira stricta', 'C. stricta', 'Cysoseira', 'Dictyota dichotoma', 'D. dichotoma', 'Dictyota', 
   			 'Phaeodactylum tricornutum', 'Pseudo-nitzchia multiseries', 'Selaginella', 'Selaginella kraussiana', 
@@ -89,7 +93,7 @@ def AddBraces(line):
   line = line.replace('\]', '}')
   return line
 
-def BeginAndEnd(line):
+def ReplaceBackSlashes(line):
   """Papers also can't see to handle "\begin" or "\end" so I'm replacing the slashes with
      back slashes that also need to be replaced after Papers has done it's work"""
   line = line.replace('/begin', '\\begin')
@@ -168,11 +172,12 @@ out_fh.write(header)
 references = 0
 for line in in_fh:
   line = line.strip()
+  line = SpellCheck(line)  # Catch some common spelling errors that I make
   line = AddItalics(line)
   line = ConvertSymbols(line)
   line = AddURL(line)
   line = AddBraces(line)   # convert "\[ ... \]" to "{ ... }" (I need to use these because Papers uses braces)
-  line = BeginAndEnd(line)  # convert "/begin" or "/end" to "\begin" or "\end" to (this is another Papers workaround)
+  line = ReplaceBackSlashes(line)  # replace specific tags with backslashes with forward slashes (this is another Papers workaround)
   if line == "\section*{References}": references = 1
   if references:
     out_fh.write(line + '\n\n')
