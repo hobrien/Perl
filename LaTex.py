@@ -140,14 +140,12 @@ else:
 in_fh = open(formatted_file, 'r')
 #read first line of infile to obtain title
 title = in_fh.readline()
-
-header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+authors = in_fh.readline()
+header = """\documentclass[a4paper, 12pt, oneside]{article}  
 \\usepackage[utf8]{inputenc}
-\\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
-\\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
-%\geometry{landscape}                		% Activate for for rotated page geometry
-%\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
-\\usepackage{graphicx}				% Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
+\\usepackage{geometry}               
+\\geometry{letterpaper}                  
+\\usepackage{graphicx}
 \\usepackage{amssymb}
 \\usepackage{textgreek}
 \\usepackage[colorlinks]{hyperref}
@@ -155,21 +153,20 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 \\usepackage{array}
 \\newcolumntype{$}{>{\global\let\currentrowstyle\\relax}}
 \\newcolumntype{^}{>{\currentrowstyle}}
-\\newcommand{\\rowstyle}[1]{\gdef\currentrowstyle{#1}%
+\\newcommand{\\rowstyle}[1]{\gdef\currentrowstyle{#1}
   #1\ignorespaces
 }
 \\renewcommand{\\familydefault}{\sfdefault}
 \\begin{document}
-\\title{""" + title + """}
-\\author{Heath E. O'Brien\\\\
-        School of Biological Sciences, University of Bristol\\\\
-        Woodland Road, Bristol BS8 1UG\\\\
-        \href{mailto:heath.obrien@gmail.com}{\\texttt{heath.obrien@gmail.com}}  }
-%\date{}							% Activate to display a given date or no date
-
+\\title{ %s }
+\\author{ %s }
 \\maketitle
+\centerline{\em{School of Biological Sciences, University of Bristol Woodland Road, Bristol BS8 1UG}}
+\\begin{flushleft}
+* E-mail address, \href{mailto:heath.obrien@gmail.com}{\\texttt{heath.obrien@gmail.com}}
+\\end{flushleft}
 
-"""
+""" % (title, authors)
 #TODO move header to a separate file
 
 
@@ -193,6 +190,6 @@ for line in in_fh:
 in_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
-system("pdflatex %s" % outfile)
+#system("pdflatex %s" % outfile)
 #system("rm %s.tex %s.log %s.aux %s.out" % (basename, basename, basename, basename))
 #system("rm %s" % infile)
