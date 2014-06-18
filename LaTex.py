@@ -65,7 +65,7 @@ def ConvertSymbols(line):
   line = line.replace('&', "\&")  # this allows & signs to be retained in final document
   line = line.replace('%', "\%")
   line = line.replace('#', "\#")
-  line = line.replace(' \\t ', ' & ')  # since & signs are being retained, I will use tab characters as table separators
+  line = line.replace('\\t ', ' & ') # since & signs are being retained, I will use tab characters as table separators
   return line
 
 def AddURL(line):
@@ -150,8 +150,15 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}   	% use "amsart" in
 \\usepackage{graphicx}				% Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
 \\usepackage{amssymb}
 \\usepackage{textgreek}
-\usepackage[colorlinks]{hyperref}
-\usepackage{tabu}
+\\usepackage[colorlinks]{hyperref}
+\\usepackage{multirow}
+\\usepackage{array}
+\\newcolumntype{$}{>{\global\let\currentrowstyle\\relax}}
+\\newcolumntype{^}{>{\currentrowstyle}}
+\\newcommand{\\rowstyle}[1]{\gdef\currentrowstyle{#1}%
+  #1\ignorespaces
+}
+\\renewcommand{\\familydefault}{\sfdefault}
 \\begin{document}
 \\title{""" + title + """}
 \\author{Heath E. O'Brien\\\\
