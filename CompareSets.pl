@@ -163,34 +163,36 @@ sub GetVenn {
    my $file_ref = shift; 
    my @files = @{$file_ref};
    
-   print "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items (type library(VennDiagram) to view in R)\n";
+   open(RSCRIPT, ">VennPlot.R");
+   print STDERR "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items (type library(VennDiagram) to view in R)\n";
+   print RSCRIPT "library(VennDiagram)\npdf('VennPlot.pdf')\n";
 
    if ( @sets == 2 ) {
-      print "ven.plot<-draw.pairwise.venn(\n";
+      print RSCRIPT "ven.plot<-draw.pairwise.venn(\n";
    }
    elsif ( @sets == 3 ) {
-      print "ven.plot<-draw.triple.venn(\n";
+      print RSCRIPT "ven.plot<-draw.triple.venn(\n";
    }
    elsif ( @sets == 4 ) {
-      print "venn.plot <- draw.quad.venn(\n";
+      print RSCRIPT "venn.plot <- draw.quad.venn(\n";
    }
    elsif ( @sets == 5 ) {
-      print "venn.plot <- draw.quintuple.venn(\n";
+      print RSCRIPT "venn.plot <- draw.quintuple.venn(\n";
    }
    else { die "This script currently only produces pariwise to quintuple Venn plots\n"; }
 
    for (my $i = 0; $i < @sets; $i ++) { 
-      print "  area", $i+1, " = ", scalar(@{$sets[$i]}), ",\n";
+      print RSCRIPT "  area", $i+1, " = ", scalar(@{$sets[$i]}), ",\n";
    }
 
    for (my $i = 0; $i < @sets - 1; $i ++) {
       for (my $j = $i + 1; $j < @sets; $j ++ ) {
          my $lc= List::Compare->new($sets[$i], $sets[$j]);
          if ( @sets == 2 ) {     
-            print "  cross.area = ", scalar($lc->get_intersection), ",\n";
+            print RSCRIPT "  cross.area = ", scalar($lc->get_intersection), ",\n";
          }
          else {
-            print "  n", $i+1, $j+1, " = ", scalar($lc->get_intersection), ",\n";
+            print RSCRIPT "  n", $i+1, $j+1, " = ", scalar($lc->get_intersection), ",\n";
          }
       }
    }
@@ -199,7 +201,7 @@ sub GetVenn {
       for (my $j = $i + 1; $j < @sets - 1; $j ++ ) {
          for ( my $k = $j + 1; $k < @sets; $k ++ ) {
             my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k]);
-            print "  n", $i+1, $j+1, $k+1, " = ", scalar($lc->get_intersection), ",\n";
+            print RSCRIPT "  n", $i+1, $j+1, $k+1, " = ", scalar($lc->get_intersection), ",\n";
          }
       }
    }
@@ -209,7 +211,7 @@ sub GetVenn {
          for ( my $k = $j + 1; $k < @sets - 1; $k ++ ) {
             for ( my $l = $k + 1; $l < @sets; $l ++ ) {      
                my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k], $sets[$l]);
-               print "  n", $i+1, $j+1, $k+1, $l+1, " = ", scalar($lc->get_intersection), ",\n";
+               print RSCRIPT "  n", $i+1, $j+1, $k+1, $l+1, " = ", scalar($lc->get_intersection), ",\n";
             }
          }
       }
@@ -221,38 +223,40 @@ sub GetVenn {
             for ( my $l = $k + 1; $l < @sets -1; $l ++ ) {
                for ( my $m = $l + 1; $m < @sets; $m ++ ) {    
                   my $lc= List::Compare->new($sets[$i], $sets[$j], $sets[$k], $sets[$l], $sets[$m]);
-                  print "  n", $i+1, $j+1, $k+1, $l+1, $m+1, " = ", scalar($lc->get_intersection), ",\n";
+                  print RSCRIPT "  n", $i+1, $j+1, $k+1, $l+1, $m+1, " = ", scalar($lc->get_intersection), ",\n";
                }
             }
          }
       }
    }
 
-   print "  category = c('", join("','", @files), "'),\n";
+   print RSCRIPT "  category = c('", join("','", @files), "'),\n";
    if ( @sets == 2) {
-      print "  fill = c('blue', 'red'),
+      print RSCRIPT "  fill = c('blue', 'red'),
              cat.col = c('blue', 'red'),\n";
    }  
    elsif ( @sets == 3 ) {
-      print "  fill = c('blue', 'red', 'green'),
+      print RSCRIPT "  fill = c('blue', 'red', 'green'),
          cat.col = c('blue', 'red', 'green'),\n";
    }
    elsif ( @sets == 4 ) {
-      print "  fill = c('orange', 'red', 'green', 'blue'),
+      print RSCRIPT "  fill = c('orange', 'red', 'green', 'blue'),
          cat.col = c('orange', 'red', 'green', 'blue'),\n";
    }
    else {
-      print "  fill = c('orange', 'red', 'green', 'blue', 'purple'),
+      print RSCRIPT "  fill = c('orange', 'red', 'green', 'blue', 'purple'),
          cat.col = c('orange', 'red', 'green', 'blue', 'purple'),\n";
    }
 
-   print "  lty = 'blank',
+   print RSCRIPT "  lty = 'blank',
       cex = 2,
       cat.cex = 1.75,
       margin=0.05,
       fontfamily='sans',
       cat.fontfamily='sans'
       )\n";
+   print RSCRIPT "dev.off()\n";
+   print `Rscript VennPlot.R`
 }
 
 
