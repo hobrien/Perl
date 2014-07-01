@@ -141,15 +141,17 @@ def add_coding(cur, infilename):
       elif name.split('|')[-1].split(':')[1] == '5prime_partial_len':
         start_codon = 0
         stop_codon = 1
-      if name.split('|')[-1].split(':')[1] == '3prime_partial_len:':
+      if name.split('|')[-1].split(':')[1] == '3prime_partial_len':
         start_codon = 1
         stop_codon = 0
       elif name.split('|')[-1].split(':')[1] == 'complete_len':
         start_codon = 1
         stop_codon = 1
+      else:
+        warnings.warn("could not parse %s" % name.split('|')[-1].split(':')[1])
       try:  
-        #print 'INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)' % (geneID, seqID, species, start, end, strand, start_codon, stop_codon)
-        cur.execute('INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)', (geneID, seqID, species, thickStart, thickEnd, strand, start_codon, stop_codon))
+        print 'INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)' % (geneID, seqID, species, thickStart, thickEnd, strand, start_codon, stop_codon)
+        #cur.execute('INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)', (geneID, seqID, species, thickStart, thickEnd, strand, start_codon, stop_codon))
       except mdb.IntegrityError, e:
         warnings.warn("%s" % e)
         pass
