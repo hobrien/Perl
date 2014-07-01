@@ -32,7 +32,6 @@ def main(argv):
         outformat = arg
   if not infile:
     sys.exit("must specify infile! %s" % usage)
-
   if not outformat:
     sys.exit("must specify format to convert to! %s" % usage)
   
@@ -49,17 +48,26 @@ def main(argv):
       outfile = '.'.join((infile, get_extension(outformat)))
           
   if outformat == 'nexus':
-    alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
+    if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
+      alignment=AlignIO.read(sys.stdin, informat, alphabet=IUPAC.ambiguous_dna)
+    else:
+      alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
     write_nexus(alignment, outfile)
   
   elif outformat == 'phylip':
-    alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
+    if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
+      alignment=AlignIO.read(sys.stdin, informat, alphabet=IUPAC.ambiguous_dna)
+    else:
+      alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
     out_fh = open(outfile, 'w')
     write_phylip(alignment, out_fh)
     out_fh.close()
   
   else:
-    AlignIO.convert(infile, informat, outfile, outformat, alphabet=IUPAC.ambiguous_dna)
+    if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
+      AlignIO.convert(sys.stdin, informat, outfile, outformat, alphabet=IUPAC.ambiguous_dna)
+    else:
+      AlignIO.convert(infile, informat, outfile, outformat, alphabet=IUPAC.ambiguous_dna)
 
 def write_nexus(alignment, outfile):
   minimal_record = "#NEXUS\nbegin data; dimensions ntax=0 nchar=0; format datatype=%s; end;" % "dna"
