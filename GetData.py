@@ -9,9 +9,9 @@ from Heathpy import flatten_GTF
 def main(argv):
   infilename = ''
   function = ''
-  usage = "GetData.py -f <function> -i <filename>"
+  usage = "GetData.py -f <function> -i <filename> -s <species> -c <cluster>"
   try:
-     opts, args = getopt.getopt(argv,"hf:i:",["function", "ifile="])
+     opts, args = getopt.getopt(argv,"hf:i:s:c:",["function", "ifile=", "species=", "cluster="])
   except getopt.GetoptError:
      print usage
      sys.exit(2)
@@ -23,8 +23,11 @@ def main(argv):
         infilename = arg
      elif opt in ("-f", "--function"):
         function = arg
-
-  con = mdb.connect('localhost', 'root', '', 'Selaginella');
+     elif opt in ("-s", "--species"):
+        species = arg
+     elif opt in ("-c", "--cluster"):
+        cluster = arg
+  con = mdb.connect('localhost', 'root', '', 'SelaginellaGenomics');
   with con:
     cur = con.cursor()
     if function == 'TAIR':
@@ -34,8 +37,16 @@ def main(argv):
     elif function == 'GTF':
       get_gtf(cur, infilename)
     elif function == 'seq_clusters':
-      seq_clusters(cur, infilename)
-      
+      seq_clusters(cur, cluster)
+    elif function == 'clusters':
+      get_clusters(cur, species)
+        
+def get_clusters(cur, species):
+  cur.execute("SELECT DISTINCT orthoID FROM OrthoGroups, CodingSequences, Sequences WHERE Orthogroups.geneID = CodingSequences.geneID AND CodingSequences.seqID = Sequences.seqID AND Sequences.species = %s", (species))
+  for cluster in cur.fetchall():
+    print cluster[0]
+  
+
 def get_TAIR(cur, infilename):
   infile = open(infilename, 'r')
   for line in infile.readlines():
@@ -76,20 +87,11 @@ def get_gtf(cur, name):
         gtf['note'] = row[11]
       print flatten_GTF(gtf)  
                   
-def seq_clusters(cur, name):
-  if name == 'ATH':
-    cur.execute("SELECT seqid, sequence, clusternum FROM Sequences WHERE species = 'ATH'")
-  else:
-    cur.execute("SELECT seqid, sequence, clusternum FROM Sequences WHERE repseq = 'NR' AND species = %s", (name))
-  for (seqid, seq, clusternum) in cur.fetchall():
-    print clusternum
-    if clusternum == None:
-      continue
-    cluster_filename = path.join(path.expanduser("~"), "Bioinformatics", "Selaginella", "NR_Clusters", "Cluster_" + str(clusternum) + ".fa")
-    cluster_file = open(cluster_filename, "a")
-    cluster_file.write(">%s\n%s\n" % (seqid, seq))
-    cluster_file.close()
-        
+def seq_clusters(cur, cluster):
+  cur.execute("SELECT DISTINCT Sequences.seqID, Sequences.sequence FROM Sequences, CodingSequences, OrthoGroups WHERE CodingSequences.geneID = OrthoGroups.geneID AND CodingSequences.seqID = Sequences.seqID AND OrthoGroups.orthoID = %s", (cluster))
+  for (seqid, seq) in cur.fetchall():
+    print ">%s" % seqid
+    print seq        
 
 if __name__ == "__main__":
    main(sys.argv[1:])
