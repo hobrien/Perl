@@ -124,7 +124,6 @@ sub usage {
 	exit;
 }
 
-open (STDERR, '>', 'translatorx_logfile.txt');
 my @aas = ("D", "E", "C", "M", "K", "R", "S", "T", "F", "Y", "N", "Q", "G", "L", "V", "I", "A", "W", "H", "P");
 my %aa2colors;
 $aa2colors{'D'} = "#A60A0A";		$aa2colors{'E'} = "#F61A2A";		$aa2colors{'C'} = "#E6E600";
@@ -165,6 +164,10 @@ my $nt_file = $params{"-i"};
 if(!-e $nt_file)
 {	&usage("File $nt_file does not exist");		}
 
+my $logfile = $nt_file;
+$logfile =~ s/.fa(sta)?$/.log/;
+open (STDERR, '>', $logfile);
+
 
 my $program = "muscle";
 my $aa_file = "";
@@ -204,7 +207,10 @@ if(exists($params{"-t"})) {
 
 my $out_file = "";
 if(exists($params{"-o"}))		{	$out_file = $params{"-o"};	}
-else							{	$out_file = "translatorx_res";		}
+else							{
+  $out_file = $nt_file;
+  $out_file =~ s/.fa(sta)?$//;
+}
 
 
 my $html_file = $out_file.".html";
