@@ -90,6 +90,7 @@ def get_gtf(cur, name):
 def seq_clusters(cur, cluster):
   cur.execute("SELECT DISTINCT Sequences.seqID, Sequences.sequence FROM Sequences, CodingSequences, OrthoGroups WHERE CodingSequences.geneID = OrthoGroups.geneID AND CodingSequences.seqID = Sequences.seqID AND OrthoGroups.orthoID = %s", (cluster))
   for (seqid, seq) in cur.fetchall():
+    seqid = seqid.replace("_", "|")
     print ">%s" % seqid
     print seq        
 
