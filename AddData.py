@@ -134,6 +134,7 @@ def add_coding(cur, infilename):
         continue
       species = name[3:name.find('comp')]
       geneID = species + '_' + name.split('|')[-1].split(':')[0].split('_')[0].replace('m.','')
+      thickStart = int(thickStart) + 1
       if name.split('|')[-1].split(':')[1] == 'internal_len':
         start_codon = 0
         stop_codon = 0
@@ -148,7 +149,7 @@ def add_coding(cur, infilename):
         stop_codon = 1
       try:  
         #print 'INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)' % (geneID, seqID, species, start, end, strand, start_codon, stop_codon)
-        cur.execute('INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)', (geneID, seqID, species, start, end, strand, start_codon, stop_codon))
+        cur.execute('INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)', (geneID, seqID, species, thickStart, thickEnd, strand, start_codon, stop_codon))
       except mdb.IntegrityError, e:
         warnings.warn("%s" % e)
         pass
