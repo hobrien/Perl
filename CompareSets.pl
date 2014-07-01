@@ -256,7 +256,9 @@ sub GetVenn {
       cat.fontfamily='sans'
       )\n";
    print RSCRIPT "dev.off()\n";
-   print `Rscript VennPlot.R`
+   close(RSCRIPT);
+   print `Rscript VennPlot.R`;
+   print `rm VennPlot.R`;
 }
 
 
