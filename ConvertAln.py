@@ -16,8 +16,7 @@ def main(argv):
   try:
      opts, args = getopt.getopt(argv,"hi:x:o:f:",["infile=", "informat=", "outfile=", "outformat="])
   except getopt.GetoptError:
-     print usage
-     sys.exit(2)
+     sys.exit(usage)
   for opt, arg in opts:
      if opt == '-h':
         print usage
@@ -37,35 +36,31 @@ def main(argv):
   
   if not informat:
     informat = guess_format(infile)
-
   if informat == 'phylip':
     informat = 'phypli-relaxed'  
-  print outfile
+
   if not outfile:
     if '.' in infile:
       outfile = '.'.join((infile.split('.')[:-1] + [get_extension(outformat)]))
     else:
       outfile = '.'.join((infile, get_extension(outformat)))
-          
-  if outformat == 'nexus':
-    if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
-      alignment=AlignIO.read(sys.stdin, informat, alphabet=IUPAC.ambiguous_dna)
+  if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
+    infile = sys.stdin    
+  if outformat == 'phylip':
+    alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
+    if outfile == 'pipe' or outfile == 'stdout' or outfile == 'STDOUT' or outfile == '|' or outfile == '>':
+      write_phylip(alignment, sys.stdout)
     else:
-      alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
-    write_nexus(alignment, outfile)
-  
-  elif outformat == 'phylip':
-    if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
-      alignment=AlignIO.read(sys.stdin, informat, alphabet=IUPAC.ambiguous_dna)
-    else:
-      alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
-    out_fh = open(outfile, 'w')
-    write_phylip(alignment, out_fh)
-    out_fh.close()
-  
+      out_fh = open(outfile, 'w')
+      write_phylip(alignment, out_fh)
+      out_fh.close()
+
   else:
-    if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
-      AlignIO.convert(sys.stdin, informat, outfile, outformat, alphabet=IUPAC.ambiguous_dna)
+    if outfile == 'pipe' or outfile == 'stdout' or outfile == 'STDOUT' or outfile == '|' or outfile == '>':
+      outfile = sys.stdout
+    if outformat == 'nexus':
+      alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
+      write_nexus(alignment, outfile)
     else:
       AlignIO.convert(infile, informat, outfile, outformat, alphabet=IUPAC.ambiguous_dna)
 
