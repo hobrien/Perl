@@ -12,11 +12,13 @@ from os import path
 
 
 def main(argv):
-  usage = 'AddData -f <function> -i <inputfile>'
-  infilename = ''
+  usage = 'AddData -f <function> -i <inputfile> -s <sequencefile> -d database_name'
   function = ''
+  infilename = ''
+  seqfilename = ''
+  database = 'SelaginellaGenomics'
   try:
-     opts, args = getopt.getopt(argv,"hf:i:",["function", "ifile="])
+     opts, args = getopt.getopt(argv,"hf:i:s:d:",["function", "infile=", "seqfile=", "database="])
   except getopt.GetoptError:
      print usage
      sys.exit(2)
@@ -24,15 +26,20 @@ def main(argv):
      if opt == '-h':
         print usage
         sys.exit()
-     elif opt in ("-i", "--ifile"):
-        infilename = arg
      elif opt in ("-f", "--function"):
         function = arg
+     elif opt in ("-i", "--infile"):
+        infilename = arg
+     elif opt in ("-s", "--seqfile"):
+        seqfilename = arg
+     elif opt in ("-d", "--database"):
+        database = arg
+        
   if function == 'ref_coding':
     infilename = 1  #don't need a infile for this function. This prevents an error in the following lines
   if not infilename or not function:
      sys.exit(usage)
-  con = mdb.connect('localhost', 'root', '', 'SelaginellaGenomics');
+  con = mdb.connect('localhost', 'root', '', database);
   with con:
     cur = con.cursor()
     if function == 'TAIR':
@@ -48,6 +55,35 @@ def main(argv):
       ref_coding(cur)
     if function == 'nr':
       non_redundant(cur, infilename)
+    if function == 'genbank':
+      genbank(cur, infilename, seqfilename)
+
+"""add genbank sequences obtained using something like:
+"blastdbcmd -db nt -entry_batch genbankIDs.txt >sequences.fa"
+
+infile should have columns as follows:
+
+seqID, locus, accessionID
+"""
+def genbank(cur, infilename, seqfilename):
+  seqdict = SeqIO.to_dict(SeqIO.parse(seqfilename, "fasta"), key_function=get_accession)
+  with open(infilename, 'rU') as f:
+    reader=csv.reader(f,delimiter='\t')
+    next(reader, None) 
+    for row in reader:
+      try:
+        (accessionID, locus, seqID) = row
+      except ValueError:
+        warnings.warn("row length %s does not match the expected number of columns (3). Double-check delimiter" % len(row))
+        continue
+      sequence = seqdict[seqID].seq
+      
+      try:
+        #print 'INSERT INTO Sequences(seqID, locus, accessionID, sequence)  VALUES(%s, %s, %s, %s)' , (seqID, locus, accessionID, sequence)
+        cur.execute('INSERT INTO Sequences(seqID, locus, accessionID, sequence)  VALUES(%s, %s, %s, %s)' , (seqID, locus, accessionID, sequence))
+      except mdb.IntegrityError, e:
+        #warnings.warn("%s" % e)
+        pass
 
 def non_redundant(cur, infilename):
   for seq_record in SeqIO.parse(infilename, "fasta"):
@@ -135,23 +171,23 @@ def add_coding(cur, infilename):
       species = name[3:name.find('comp')]
       geneID = species + '_' + name.split('|')[-1].split(':')[0].split('_')[0].replace('m.','')
       thickStart = int(thickStart) + 1
-      if name.split('|')[-1].split(':')[1] == 'internal_len':
+      if 'internal_len' in name.split('|')[-1].split(':')[1]:
         start_codon = 0
         stop_codon = 0
-      elif name.split('|')[-1].split(':')[1] == '5prime_partial_len':
+      elif '5prime_partial_len' in name.split('|')[-1].split(':')[1]:
         start_codon = 0
         stop_codon = 1
-      if name.split('|')[-1].split(':')[1] == '3prime_partial_len':
+      elif '3prime_partial_len' in name.split('|')[-1].split(':')[1]:
         start_codon = 1
         stop_codon = 0
-      elif name.split('|')[-1].split(':')[1] == 'complete_len':
+      elif 'complete_len' in name.split('|')[-1].split(':')[1]:
         start_codon = 1
         stop_codon = 1
       else:
         warnings.warn("could not parse %s" % name.split('|')[-1].split(':')[1])
       try:  
-        print 'INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)' % (geneID, seqID, species, thickStart, thickEnd, strand, start_codon, stop_codon)
-        #cur.execute('INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)', (geneID, seqID, species, thickStart, thickEnd, strand, start_codon, stop_codon))
+        #print 'INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)' % (geneID, seqID, species, thickStart, thickEnd, strand, start_codon, stop_codon)
+        cur.execute('INSERT INTO CodingSequences(geneID, seqID, species, start, end, strand, start_codon, stop_codon)  VALUES(%s, %s, %s, %s, %s, %s, %s, %s)', (geneID, seqID, species, thickStart, thickEnd, strand, start_codon, stop_codon))
       except mdb.IntegrityError, e:
         warnings.warn("%s" % e)
         pass
@@ -195,6 +231,15 @@ def add_ortholog_info(cur, infilename):
     cur.execute("UPDATE sequences SET clusternum = %s WHERE seqid = %s", (clusternum, ATH))
     print "UPDATE sequences SET clusternum = %s WHERE seqid = '%s'" % (clusternum, ATH)
 
+def get_accession(record):
+    """"Given a SeqRecord, return the accession number as a string.
+  
+    e.g. "gi|2765613|gb|Z78488.1|PTZ78488" -> "Z78488.1"
+    """
+    parts = record.id.split("|")
+    assert len(parts) == 5 and parts[0] == "gi" and parts[2] == "gb"
+    return parts[3].split('.')[0]
+    
 if __name__ == "__main__":
    main(sys.argv[1:])
 
