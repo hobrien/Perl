@@ -36,11 +36,6 @@ def main(argv):
      elif opt in ("-o", "--ofile"):
         outfilename = arg
   con = mdb.connect('localhost', 'root', '', database);
-
-  if outfilename:
-    outfile = open(outfilename, 'w')
-  else : 
-    outfile = sys.stdout
     
   with con:
     cur = con.cursor()
@@ -51,7 +46,7 @@ def main(argv):
     elif function == 'GTF':
       get_gtf(cur, infilename)
     elif function == 'seq_clusters':
-      seq_clusters(cur, cluster, outfile)
+      seq_clusters(cur, cluster, outfilename)
     elif function == 'clusters':
       get_clusters(cur, species)
     elif function == 'locus':
@@ -108,9 +103,13 @@ def get_gtf(cur, name):
         gtf['note'] = row[11]
       print flatten_GTF(gtf)  
                   
-def seq_clusters(cur, cluster, outfile):
+def seq_clusters(cur, cluster, outfilename):
   cur.execute("SELECT geneID FROM OrthoGroups WHERE orthoID = %s AND (geneID LIKE 'KRAUS%%' OR geneID LIKE 'MOEL%%' OR geneID LIKE 'UNC%%' OR geneID LIKE 'WILD%%')", cluster)
   if len(cur.fetchall()) > 0:
+    if outfilename:
+      outfile = open(outfilename, 'w')
+    else : 
+      outfile = sys.stdout
     cur.execute("SELECT DISTINCT CodingSequences.geneID, Sequences.sequence, CodingSequences.start, CodingSequences.end, CodingSequences.strand FROM Sequences, CodingSequences, OrthoGroups WHERE CodingSequences.geneID = OrthoGroups.geneID AND CodingSequences.seqID = Sequences.seqID AND OrthoGroups.orthoID = %s", (cluster))
     for (seqid, seq, start, end, strand) in cur.fetchall():
       seqid = seqid.replace("_", "|")
