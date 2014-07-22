@@ -4,6 +4,8 @@ import sys, getopt, csv
 import MySQLdb as mdb
 from os import path
 from Heathpy import flatten_GTF
+from Bio.Seq import Seq
+from Bio.Alphabet import IUPAC
 
 
 def main(argv):
@@ -112,12 +114,16 @@ def seq_clusters(cur, cluster, outfile):
     cur.execute("SELECT DISTINCT CodingSequences.geneID, Sequences.sequence, CodingSequences.start, CodingSequences.end, CodingSequences.strand FROM Sequences, CodingSequences, OrthoGroups WHERE CodingSequences.geneID = OrthoGroups.geneID AND CodingSequences.seqID = Sequences.seqID AND OrthoGroups.orthoID = %s", (cluster))
     for (seqid, seq, start, end, strand) in cur.fetchall():
       seqid = seqid.replace("_", "|")
+      seq = Seq(seq, IUPAC.unambiguous_dna)
       outfile.write(">%s\n" % seqid)
+      #print ">%s" % seqid
       start = start - 1 #need to convert to python numbering
       if strand == '+':
-        outfile.write(seq[start:end] + '\n')
+        outfile.write(str(seq[start:end]) + '\n')
+        #print seq[start:end]
       else:
-        outfile.write(seq[start:end].reverse_complement() + '\n')
+        outfile.write(str(seq[start:end].reverse_complement()) + '\n')
+        #print seq[start:end].reverse_complement()
 
 if __name__ == "__main__":
    main(sys.argv[1:])
