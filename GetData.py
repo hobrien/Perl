@@ -8,10 +8,12 @@ from Heathpy import flatten_GTF
 
 def main(argv):
   infilename = ''
+  outfilename = ''
   function = ''
-  usage = "GetData.py -f <function> -i <filename> -s <species> -c <cluster>"
+  database = 'SelaginellaGenomics'
+  usage = "GetData.py -f <function> -i <infilename> -s <species> -c <cluster> -d <database> -o <outfile>"
   try:
-     opts, args = getopt.getopt(argv,"hf:i:s:c:",["function", "ifile=", "species=", "cluster="])
+     opts, args = getopt.getopt(argv,"hf:i:s:c:d:o:",["function", "ifile=", "species=", "cluster=", "db=", "ofile="])
   except getopt.GetoptError:
      print usage
      sys.exit(2)
@@ -27,7 +29,17 @@ def main(argv):
         species = arg
      elif opt in ("-c", "--cluster"):
         cluster = arg
-  con = mdb.connect('localhost', 'root', '', 'SelaginellaGenomics');
+     elif opt in ("-d", "--db"):
+        database = arg
+     elif opt in ("-o", "--ofile"):
+        outfilename = arg
+  con = mdb.connect('localhost', 'root', '', database);
+
+  if outfilename:
+    outfile = open(outfilename, 'w')
+  else : 
+    outfile = sys.stdout
+    
   with con:
     cur = con.cursor()
     if function == 'TAIR':
@@ -37,10 +49,17 @@ def main(argv):
     elif function == 'GTF':
       get_gtf(cur, infilename)
     elif function == 'seq_clusters':
-      seq_clusters(cur, cluster)
+      seq_clusters(cur, cluster, outfile)
     elif function == 'clusters':
       get_clusters(cur, species)
-        
+    elif function == 'locus':
+      get_locus(cur, cluster)    
+
+def get_locus(cur, locus):
+  cur.execute("SELECT seqID, sequence FROM Sequences WHERE locusID = %s", (locus))
+  for (accessionID, sequence) in cur.fetchall():
+    print ">" + accessionID + "\n" + sequence
+
 def get_clusters(cur, species):
   cur.execute("SELECT DISTINCT orthoID FROM OrthoGroups, CodingSequences, Sequences WHERE Orthogroups.geneID = CodingSequences.geneID AND CodingSequences.seqID = Sequences.seqID AND Sequences.species = %s", (species))
   for cluster in cur.fetchall():
@@ -87,16 +106,18 @@ def get_gtf(cur, name):
         gtf['note'] = row[11]
       print flatten_GTF(gtf)  
                   
-def seq_clusters(cur, cluster):
-  cur.execute("SELECT DISTINCT CodingSequences.geneID, Sequences.sequence, CodingSequences.start, CodingSequences.end, CodingSequences.strand FROM Sequences, CodingSequences, OrthoGroups WHERE CodingSequences.geneID = OrthoGroups.geneID AND CodingSequences.seqID = Sequences.seqID AND OrthoGroups.orthoID = %s", (cluster))
-  for (seqid, seq, start, end, strand) in cur.fetchall():
-    seqid = seqid.replace("_", "|")
-    print ">%s" % seqid
-    start = start - 1 #need to convert to python numbering
-    if strand == '+':
-      print seq[start:end]
-    else:
-      print seq[start:end].reverse_complement()
+def seq_clusters(cur, cluster, outfile):
+  cur.execute("SELECT geneID FROM OrthoGroups WHERE orthoID = %s AND (geneID LIKE 'KRAUS%%' OR geneID LIKE 'MOEL%%' OR geneID LIKE 'UNC%%' OR geneID LIKE 'WILD%%')", cluster)
+  if len(cur.fetchall()) > 0:
+    cur.execute("SELECT DISTINCT CodingSequences.geneID, Sequences.sequence, CodingSequences.start, CodingSequences.end, CodingSequences.strand FROM Sequences, CodingSequences, OrthoGroups WHERE CodingSequences.geneID = OrthoGroups.geneID AND CodingSequences.seqID = Sequences.seqID AND OrthoGroups.orthoID = %s", (cluster))
+    for (seqid, seq, start, end, strand) in cur.fetchall():
+      seqid = seqid.replace("_", "|")
+      outfile.write(">%s\n" % seqid)
+      start = start - 1 #need to convert to python numbering
+      if strand == '+':
+        outfile.write(seq[start:end] + '\n')
+      else:
+        outfile.write(seq[start:end].reverse_complement() + '\n')
 
 if __name__ == "__main__":
    main(sys.argv[1:])
