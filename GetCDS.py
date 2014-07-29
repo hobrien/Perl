@@ -8,9 +8,9 @@ Entrez.email = "heath.obrien@gmail.com"
 def main(argv):
    inputfile = ''
 #   outputfile = ''
-   usage = 'GetCDS.py -i <inputfile>'
+   usage = 'GetCDS.py -i inputfile >output file'
    try:
-      opts, args = getopt.getopt(argv,"hi:o:",["ifile=","ofile="])
+      opts, args = getopt.getopt(argv,"hi:",["ifile="])
    except getopt.GetoptError:
       print usage
       sys.exit(2)
@@ -20,6 +20,8 @@ def main(argv):
          sys.exit()
       elif opt in ("-i", "--ifile"):
          inputfile = arg
+   if not inputfile:
+     sys.exit(usage)
    for pep in SeqIO.parse(inputfile, "genbank"):
       cds = get_cds(pep)
       print cds.format("fasta")
