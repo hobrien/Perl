@@ -2,15 +2,14 @@
 
 import sys, getopt
 from Bio import Entrez, SeqIO
-Entrez.email = "heath.obrien@gmail.com"
 
 
 def main(argv):
    inputfile = ''
-#   outputfile = ''
-   usage = 'GetCDS.py -i inputfile >output file'
+   Entrez.email = ''
+   usage = 'GetCDS.py -i inputfile -e email_address >output file'
    try:
-      opts, args = getopt.getopt(argv,"hi:",["ifile="])
+      opts, args = getopt.getopt(argv,"hi:e:",["ifile=", 'email='])
    except getopt.GetoptError:
       print usage
       sys.exit(2)
@@ -20,7 +19,9 @@ def main(argv):
          sys.exit()
       elif opt in ("-i", "--ifile"):
          inputfile = arg
-   if not inputfile:
+      elif opt in ("-e", "--email"):
+         Entrez.email = arg
+   if not inputfile or not Entrez.email:
      sys.exit(usage)
    for pep in SeqIO.parse(inputfile, "genbank"):
       cds = get_cds(pep)
