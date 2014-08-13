@@ -2,6 +2,8 @@
 
 import csv, sys, subprocess, argparse, os
 from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 """
 ParseBlast.py
@@ -30,11 +32,11 @@ def parse_blast(args):
   subject sequence (corresponding to the highest-scoring query). This will cause problems
   if there are multiple homologs of the query on the same sequence.)"""
   results = top_query(args)
-  print len(results)
+  seqs = []
   for result in results:
     subject = result[0]['sseqid']
     strand = result[0]['strand']
-    header = ">" + args.subject_name +"_" + result[0]['qseqid']
+    header = args.subject_name + "_" + result[0]['qseqid']
     if args.program == 'tblastn':
       seq_list = []
       for coord in combine_hits(result):
@@ -45,14 +47,13 @@ def parse_blast(args):
           seq = 'NNN'.join(seq_list)
     else:
       seq = str(get_seq(args, subject))
-    print header
-    print seq
+    seqs.append(SeqRecord(Seq(seq), id=header, description = ''))
+  return seqs
       
 def get_seq(args, seqname, start = 1 , end = None, strand = 1):
   """builds a biopython database file for the subject sequences and retrieves the specified
   portion of the specified sequence, reverse-complementing if necessary and translating
   dna sequences."""
-  print args.index_filename, args.seqfilename
   sequence_db = SeqIO.index_db(args.index_filename, args.seqfilename, 'fasta')
   #seq = sequence_db[seqname][start-1:end].seq
   seq = sequence_db[seqname][start-1:end].seq
@@ -232,5 +233,4 @@ def parse_args(input):
         
 if __name__ == "__main__":
   args = parse_args(sys.argv[1:])
-  sys.argv
-  parse_blast(args)
+  SeqIO.write(parse_blast(args), sys.stdout, "fasta")
