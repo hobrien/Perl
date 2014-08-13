@@ -48,7 +48,7 @@ def parse_blast(args):
     print header
     print seq
       
-def get_seq(args, seqname, start = 1 , end = -1, strand = 1):
+def get_seq(args, seqname, start = 1 , end = None, strand = 1):
   """builds a biopython database file for the subject sequences and retrieves the specified
   portion of the specified sequence, reverse-complementing if necessary and translating
   dna sequences."""
@@ -59,6 +59,8 @@ def get_seq(args, seqname, start = 1 , end = -1, strand = 1):
   if strand < 0:
     seq = seq.reverse_complement()
   if args.translate and args.program == 'tblastn':
+    while len(seq) % 3:
+      seq = seq[:-1]
     seq = seq.translate()
   return seq  
 
