@@ -30,7 +30,7 @@ def parse_blast(args):
   subject sequence (corresponding to the highest-scoring query). This will cause problems
   if there are multiple homologs of the query on the same sequence.)"""
   results = top_query(args)
-  for result in results.values():
+  for result in results:
     subject = result[0]['sseqid']
     strand = result[0]['strand']
     header = ">" + args.subject_name +"_" + result[0]['qseqid']
@@ -70,9 +70,15 @@ def top_query(args):
   
   -This assumes that multiple hsps for query / subject combination are sorted according to
   bit score. It may fail to correctly determine the highest-scoring query for a given
-  subject if this is not the case"""  
+  subject if this is not the case
   
-  top_hits = {}
+  -This step is problematic because the order of the blast hits is lost. The easiest solution
+  will be to make an array of contig names in addition to the dictionary of hits. I can then
+  return a ordered list of hits rather than the dictionary
+  """  
+  
+  top_hit_dict = {}
+  hit_order = []
   blastfilename = args.blastfilename
   assembly = args.seqfilename
   species_name = args.subject_name
@@ -85,15 +91,19 @@ def top_query(args):
 
       if blast_result['evalue'] > evalue_cutoff:
         continue
-      if blast_result['sseqid'] not in top_hits:
-        top_hits[blast_result['sseqid']] = [blast_result]
-      elif blast_result['qseqid'] == top_hits[blast_result['sseqid']][0]['qseqid']:
-        top_hits[blast_result['sseqid']].append(blast_result)
-      elif blast_result['bitscore'] > top_hits[blast_result['sseqid']][0]['bitscore']:
-        top_hits[blast_result['sseqid']] = [blast_result]
+      if blast_result['sseqid'] not in top_hit_dict:
+        top_hit_dict[blast_result['sseqid']] = [blast_result]
+        hit_order.append(blast_result['sseqid'])
+      elif blast_result['qseqid'] == top_hit_dict[blast_result['sseqid']][0]['qseqid']:
+        top_hit_dict[blast_result['sseqid']].append(blast_result)
+      elif blast_result['bitscore'] > top_hit_dict[blast_result['sseqid']][0]['bitscore']:
+        top_hit_dict[blast_result['sseqid']] = [blast_result]
       else:
         pass 
-  return top_hits
+  top_hit_list = []
+  for hit in hit_order:
+    top_hit_list.append(top_hit_dict[hit])
+  return top_hit_list
 
 def parse_blast_stats(column_names, row):
   """This will convert stats from blast hits to the correct numeric format"""
