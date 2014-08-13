@@ -30,6 +30,7 @@ def parse_blast(args):
   subject sequence (corresponding to the highest-scoring query). This will cause problems
   if there are multiple homologs of the query on the same sequence.)"""
   results = top_query(args)
+  print len(results)
   for result in results:
     subject = result[0]['sseqid']
     strand = result[0]['strand']
@@ -51,6 +52,7 @@ def get_seq(args, seqname, start = 1 , end = -1, strand = 1):
   """builds a biopython database file for the subject sequences and retrieves the specified
   portion of the specified sequence, reverse-complementing if necessary and translating
   dna sequences."""
+  print args.index_filename, args.seqfilename
   sequence_db = SeqIO.index_db(args.index_filename, args.seqfilename, 'fasta')
   #seq = sequence_db[seqname][start-1:end].seq
   seq = sequence_db[seqname][start-1:end].seq
@@ -218,11 +220,15 @@ def parse_args(input):
       args.subject_name = os.path.basename(args.seqfilename).split('.')[0]
   if not args.index_filename:
       args.index_filename = '.'.join(args.seqfilename.split('.')[:-1] + ['inx'])
+  args.blastfilename = os.path.abspath(args.blastfilename)
+  args.seqfilename = os.path.abspath(args.seqfilename)
+  args.index_filename = os.path.abspath(args.index_filename)
+  
   return args
 #=================== END ARGUMENT PARSING  =======================
  
         
 if __name__ == "__main__":
   args = parse_args(sys.argv[1:])
-  print args
+  sys.argv
   parse_blast(args)
