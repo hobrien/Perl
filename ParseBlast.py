@@ -106,7 +106,8 @@ def top_query(args):
   return top_hit_list
 
 def parse_blast_stats(column_names, row):
-  """This will convert stats from blast hits to the correct numeric format"""
+  """This will convert stats from blast hits to the correct numeric format and determine strand
+  start and end coordinates are not reversed for negative strand results"""
   result = {}
   for field in column_names.split():
     try:
@@ -164,8 +165,8 @@ def combine_hits(results):
     else:
       coords.append([send, sstart - overlap])
   return coords
-        
-if __name__ == "__main__":
+ 
+def parse_args(input):
 #=================== BEGIN ARGUMENT PARSING  =======================
   parser = argparse.ArgumentParser(description="Extract subject sequences from top scoring blast hit")
   parser.add_argument('blastfilename', help='name of blast outfile')
@@ -184,7 +185,7 @@ if __name__ == "__main__":
   parser.add_argument('--translate', '-t', action="store_true",
                    help='translate DNA sequences (tblastn only)')  
   parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
-  args = parser.parse_args()
+  args = parser.parse_args(input)
   args.column_names = args.column_names.replace('6 ', '')  #This is a hack that allows me to use the full custom fields specification from the the blast -outfmt command as input for this. 
   #substitute other query / subject identifiers for qseqid / sseqid if these are not present
   if not 'sseqid' in args.column_names:
@@ -217,6 +218,11 @@ if __name__ == "__main__":
       args.subject_name = os.path.basename(args.seqfilename).split('.')[0]
   if not args.index_filename:
       args.index_filename = '.'.join(args.seqfilename.split('.')[:-1] + ['inx'])
+  return args
 #=================== END ARGUMENT PARSING  =======================
-
+ 
+        
+if __name__ == "__main__":
+  args = parse_args(sys.argv[1:])
+  print args
   parse_blast(args)
