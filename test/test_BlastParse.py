@@ -111,3 +111,14 @@ def test_parse_blast():
   assert seqs[0].seq.find("RSQTPNSSVADDTRLHKRSMTISKGHSVSVVLISAALETIAASKEARRSTVIRESTQK") == 0
   print seqs[0].seq.count('*')
   assert seqs[0].seq.count('*') == 13
+  print len(seqs[0].seq)
+  assert len(seqs[0].seq) == 1809
+  args = parse_args(('--translate', '--evalue', '1e-70', os.path.join(test_dir, 'test.tblastn'), os.path.join(test_dir, 'test.fa')))
+  seqs = parse_blast(args)
+  assert len(seqs) == 1
+  print seqs[0].seq[:30]
+  assert seqs[0].seq.find("RSQTPNSSVADDTRLHKRSMTISKGHSVSVVLISAALETIAASKEARRSTVIRESTQK") == 0
+  print seqs[0].seq.count('*')
+  assert seqs[0].seq.count('*') == 13
+  print len(seqs[0].seq)
+  assert len(seqs[0].seq) == 1809

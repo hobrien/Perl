@@ -94,9 +94,9 @@ def top_query(args):
       #Get blast stats and covert to numeric formats
       blast_result = parse_blast_stats(args.column_names, row)
 
-      if blast_result['evalue'] > evalue_cutoff:
-        continue
       if blast_result['sseqid'] not in top_hit_dict:
+        if blast_result['evalue'] > evalue_cutoff:
+          continue
         top_hit_dict[blast_result['sseqid']] = [blast_result]
         hit_order.append(blast_result['sseqid'])
       elif blast_result['qseqid'] == top_hit_dict[blast_result['sseqid']][0]['qseqid']:
