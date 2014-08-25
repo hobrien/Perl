@@ -44,9 +44,9 @@ def top_hit(blastfilename, args):
     for row in reader: 
       #Get blast stats and covert to numeric formats
       blast_result = parse_blast_stats(args.column_names, row)
-      if blast_result['sseqid'] not in top_hit_dict:
+      if blast_result['qseqid'] not in top_hit_dict:
         if blast_result['evalue'] <= evalue_cutoff:
-          top_hit_dict[blast_result['sseqid']] = blast_result['qseqid']
+          top_hit_dict[blast_result['qseqid']] = blast_result['sseqid']
   return top_hit_dict
 
 def parse_blast_stats(column_names, row):
