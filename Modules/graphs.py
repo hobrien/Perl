@@ -11,6 +11,7 @@ class Graph(object):
     def __init__(self, graph_dict={}):
         """ initializes a graph object """
         self.__graph_dict = graph_dict
+        self.__connected_verticies = set()
 
     def __getitem__(self, item):
         """returns list of vertices adjacent to item"""
@@ -29,6 +30,10 @@ class Graph(object):
     def vertices(self):
         """ returns the vertices of a graph """
         return list(self.__graph_dict.keys())
+
+    def connected_vertices(self):
+        """ returns the vertices of a graph """
+        return list(self.__connected_verticies)
 
     def edges(self):
         """ returns the edges of a graph """
@@ -153,6 +158,35 @@ class Graph(object):
         seq.sort(reverse=True)
         return tuple(seq)         
                               
+    def density(self):
+        """ method to calculate the density of a graph """
+        g = self.__graph_dict
+        V = len(g.keys())
+        E = len(self.edges())
+        return 2.0 * E / (V *(V - 1))
+
+    def is_connected(self, 
+                     start_vertex=None):
+        """ determines if the graph is connected """
+        gdict = self.__graph_dict        
+        vertices = gdict.keys() 
+        if not start_vertex:
+            # choose a vertex from graph as a starting point
+            start_vertex = vertices[0]
+        self.__connected_verticies.add(start_vertex)
+        #vertices_encountered.add(start_vertex)
+        if len(self.__connected_verticies) != len(vertices):
+        #if len(vertices_encountered) != len(vertices):
+            for vertex in gdict[start_vertex]:
+                if vertex not in self.__connected_verticies:
+                #if vertex not in vertices_encountered:
+                    if self.is_connected(vertex):
+                    #if self.is_connected(vertices_encountered, vertex):
+                        return True
+        else:
+            return True
+        return False
+
     @staticmethod
     def erdoes_gallai(dsequence):
         """ Checks if the condition of the Erdoes-Gallai inequality 
@@ -210,7 +244,6 @@ if __name__ == "__main__":
     print("Edges of graph:")
     print(graph.edges())
     
-    print "%%%%%%%%%%%%%%%%%%%%%%%%%"
     print "Graph: ", graph
     print "Path from a to e: ", graph.find_path('a','e')
     print "All paths from a to e: ", graph.find_all_paths('a','e')
@@ -221,3 +254,47 @@ if __name__ == "__main__":
     print "Delta: ", graph.Delta()
     print "Degree seq: ", graph.degree_sequence()
     print graph.erdoes_gallai(graph.degree_sequence())
+    
+    complete_graph = { 
+        "a" : ["b","c"],
+        "b" : ["a","c"],
+        "c" : ["a","b"]
+    }
+
+    isolated_graph = { 
+        "a" : [],
+        "b" : [],
+        "c" : []
+    }
+
+
+    print(graph)
+    print(graph.is_connected())
+    print(graph.density())
+
+    print "%%%%%%%%%%%%%%%%%%%%%%%%%"
+    graph = Graph(complete_graph)
+    print "Complete Graph:\n", graph
+    print(graph.is_connected())
+    print graph.connected_vertices()
+    print(graph.density())
+
+    graph = Graph(isolated_graph)
+    print "Isolated Graph:\n", graph
+    print(graph.is_connected())
+    print graph.connected_vertices()
+    print(graph.density())
+    extra_edges = 0
+    while not graph.is_connected():
+        for vertex in graph.vertices():
+            if vertex not in graph.connected_vertices():
+                graph.add_edge((vertex, graph.vertices()[0]))
+                extra_edges += 1
+                break
+    print extra_edges
+    
+    graph = Graph()
+    for x in range(1,10):
+      graph.add_vertex(x)
+    print graph
+    
