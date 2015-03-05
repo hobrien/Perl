@@ -165,7 +165,7 @@ sub GetVenn {
    
    open(RSCRIPT, ">VennPlot.R");
    print STDERR "# drawing Venn Diagram for total of ", scalar(List::Compare->new(@sets)->get_union), " items (type library(VennDiagram) to view in R)\n";
-   print RSCRIPT "library(VennDiagram)\npdf('VennPlot.pdf')\n";
+   print RSCRIPT "library(VennDiagram)\npng('VennPlot.png', bg='transparent', res = 300, width=15, height=15, units='cm')\n";
 
    if ( @sets == 2 ) {
       print RSCRIPT "ven.plot<-draw.pairwise.venn(\n";

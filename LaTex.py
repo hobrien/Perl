@@ -111,7 +111,7 @@ infile = sys.argv[1]
 basename, ext = path.splitext(infile)
 if '-formatted' in infile:
   formatted_file = infile
-  oringinal_file = infile.replace('-formatted', '')
+  original_file = infile.replace('-formatted', '')
 else:
   original_file = infile
   basename, ext = path.splitext(infile)
@@ -148,9 +148,12 @@ header = """\documentclass[a4paper, 12pt, oneside]{article}
 \\usepackage{graphicx}
 \\usepackage{amssymb}
 \\usepackage{textgreek}
-\\usepackage[colorlinks]{hyperref}
+\\usepackage{hyperref}
 \\usepackage{multirow}
 \\usepackage{array}
+\\usepackage{threeparttable}
+\\usepackage{graphicx}
+\\graphicspath{{/Users/HeathOBrien/Bioinformatics/Selaginella_DGE/Figures/}}
 \\newcolumntype{$}{>{\global\let\currentrowstyle\\relax}}
 \\newcolumntype{^}{>{\currentrowstyle}}
 \\newcommand{\\rowstyle}[1]{\gdef\currentrowstyle{#1}
@@ -190,6 +193,6 @@ for line in in_fh:
 in_fh.close()
 out_fh.write("\n\end{document}\n")
 out_fh.close()
-#system("pdflatex %s" % outfile)
+system("pdflatex %s" % outfile)
 #system("rm %s.tex %s.log %s.aux %s.out" % (basename, basename, basename, basename))
 #system("rm %s" % infile)
