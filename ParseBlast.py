@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/Users/HeathOBrien/anaconda/bin/python
 
 import csv, sys, subprocess, argparse, os
 from Bio import SeqIO
@@ -36,7 +36,10 @@ def parse_blast(args):
   for result in results:
     subject = result[0]['sseqid']
     strand = result[0]['strand']
-    header = args.subject_name + "_" + result[0]['qseqid']
+    if args.subject_name:
+      header = args.subject_name + "_" + result[0]['qseqid']
+    else:
+      header = subject
     if args.program == 'tblastn':
       seq_list = []
       for coord in combine_hits(result):
@@ -219,8 +222,8 @@ def parse_args(input):
     print "blast program not recognized. Please specify either '--program blastp' or '--program tblastn'"
     print "type %s --help for more information" % os.path.basename(sys.argv[0])
     sys.exit()    
-  if not args.subject_name:
-      args.subject_name = os.path.basename(args.seqfilename).split('.')[0]
+  #if not args.subject_name:
+  #    args.subject_name = os.path.basename(args.seqfilename).split('.')[0]
   if not args.index_filename:
       args.index_filename = '.'.join(args.seqfilename.split('.')[:-1] + ['inx'])
   args.blastfilename = os.path.abspath(args.blastfilename)
