@@ -1,10 +1,11 @@
 #!/usr/local/bin/python
 
 
-import sys, getopt
+import sys, getopt, warnings
 from Bio import AlignIO
 from Bio.Alphabet import IUPAC
 from Bio.Nexus import Nexus
+from Bio.Align import MultipleSeqAlignment
 from Heathpy import write_phylip
 
 def main(argv):
@@ -36,33 +37,31 @@ def main(argv):
   
   if not informat:
     informat = guess_format(infile)
-  if informat == 'phylip':
-    informat = 'phypli-relaxed'  
+
+  if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
+    infile = sys.stdin    
+
+  alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
+  alignment = de_duplicate(alignment)
 
   if not outfile:
     if '.' in infile:
       outfile = '.'.join((infile.split('.')[:-1] + [get_extension(outformat)]))
     else:
       outfile = '.'.join((infile, get_extension(outformat)))
-  if infile == 'pipe' or infile == 'stdin' or infile == 'STDIN' or infile == '|':
-    infile = sys.stdin    
-  if outformat == 'phylip':
-    alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
-    if outfile == 'pipe' or outfile == 'stdout' or outfile == 'STDOUT' or outfile == '|' or outfile == '>':
+
+  if outfile == 'pipe' or outfile == 'stdout' or outfile == 'STDOUT' or outfile == '|' or outfile == '>':
       write_phylip(alignment, sys.stdout)
-    else:
+
+  if outformat == 'phylip':
       out_fh = open(outfile, 'w')
       write_phylip(alignment, out_fh)
       out_fh.close()
-
-  else:
-    if outfile == 'pipe' or outfile == 'stdout' or outfile == 'STDOUT' or outfile == '|' or outfile == '>':
-      outfile = sys.stdout
-    if outformat == 'nexus':
+  elif outformat == 'nexus':
       alignment=AlignIO.read(infile, informat, alphabet=IUPAC.ambiguous_dna)
       write_nexus(alignment, outfile)
-    else:
-      AlignIO.convert(infile, informat, outfile, outformat, alphabet=IUPAC.ambiguous_dna)
+  else:
+      AlignIO.write(alignment, outfile, outformat)
 
 def write_nexus(alignment, outfile):
   minimal_record = "#NEXUS\nbegin data; dimensions ntax=0 nchar=0; format datatype=%s; end;" % "dna"
@@ -72,12 +71,23 @@ def write_nexus(alignment, outfile):
     n.add_sequence(record.id, record.seq.tostring())
     n.write_nexus_data(outfile, interleave=False)
 
+def de_duplicate(aln):
+    names = {}
+    unique_seqs = []
+    for seq in aln:
+        if seq.id in names:
+            warnings.warn("duplicate sequences names %s" % seq.id)
+        else:
+            unique_seqs.append(seq)
+            names[seq.id] = 1
+    return MultipleSeqAlignment(unique_seqs)
+
 def guess_format(file):
   ext = file.split('.')[-1]
   if ext[0] == 'f' and ext[-1] == 'q': format = "fastq"
   elif ext[0:2] == 'fa': format = "fasta"
   elif ext == 'xmfa': format = "xmfa"
-  elif ext == 'phy': format = "phylip-relaxed"
+  elif ext == 'phy': format = "phylip"
   elif ext == 'aln': format = "clustal"
   elif ext == 'gb': format =  "genbank"
   elif ext == 'nxs': format =  "nexus"
