@@ -1,13 +1,14 @@
 #!/Users/HeathOBrien/anaconda/bin/python
 
 
-import sys, getopt, requests
+import sys, getopt, requests, warnings
 
 def main(argv):
   usage = 'Ensembl.py -q <query> -o <outfile> -f [tree | aa | cds | ortho | ortho_dna] [-v]'
   query = ''
   outfile = ''
   outformat = ''
+  global verbose_level
   verbose_level = 0
   try:
      opts, args = getopt.getopt(argv,"hvq:o:f:",["query=", "outfile=", "outformat=", "verbose="])
@@ -36,13 +37,14 @@ def main(argv):
   elif outformat == 'aa':
       ext = "/sequence/id/%s?content-type=text/x-fasta;type=protein" % query
   elif outformat == 'cds':
-      ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds" % query
+      ext = "/overlap/id/%s?feature=cds;content-type=application/json" % query
+      r = run_query(server+ext)
+      transcriptID = r.json()[0]['id']
+      ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds" % transcriptID
   elif outformat == 'orthologs' or outformat == 'ortho_dna':
       ext = "/homology/id/%s?content-type=application/json;type=orthologues" % query
   else:
       sys.exit("format %s not recognised\n\n%s" % (outformat, usage))
-  if verbose_level > 0:
-      sys.stderr.write(server+ext+"\n")
   r = run_query(server+ext)
   if outfile:
       out_fh = open(outfile, 'w')
@@ -72,10 +74,13 @@ def main(argv):
       out_fh.write(r.text + '\n')
 
 def run_query(request):
+    if verbose_level > 0:
+        sys.stderr.write(request+"\n")
     r = requests.get(request)
     if not r.ok:
+        warnings.warn("query %s not recognised\n\n" % request)
         r.raise_for_status()
-        sys.exit("query %s not recognised" % server+ext)
+        sys.exit()
     return r  
 
 def clean_name(name):
@@ -84,8 +89,6 @@ def clean_name(name):
         name = '_'.join(name.split('_')[:-2])
     elif len(name.split('_')) == 2:
         sys.exit("Name %s contains one underscore" % name)
-    if name[-2] == '.' and name[-1].isdigit(): #this will fail if there are more than 9 transcripts, but I think that's OK
-        name = name[:-2]
     return name
     
 if __name__ == "__main__":
