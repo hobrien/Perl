@@ -43,11 +43,7 @@ def main(argv):
       sys.exit("format %s not recognised\n\n%s" % (outformat, usage))
   if verbose_level > 0:
       sys.stderr.write(server+ext+"\n")
-  r = requests.get(server+ext)
-  if not r.ok:
-      r.raise_for_status()
-      sys.exit("query %s not recognised" % server+ext)
-      
+  r = run_query(server+ext)
   if outfile:
       out_fh = open(outfile, 'w')
   else:
@@ -65,11 +61,8 @@ def main(argv):
               ext = "/sequence/id/%s?multiple_sequences=1;content-type=text/x-fasta;type=cds" % query
               if verbose_level > 0:
                   sys.stderr.write(server+ext+"\n")
-              r2 = requests.get(server+ext)
-              if r2.ok:
-                  out_fh.write(">" + r2.text.split(">")[1]) #This prints the first CDS (when there are splice variants)
-              else:
-                  sys.stderr.write("Sequence %s not available!\n" % query)
+              r2 = run_query(server+ext)
+              out_fh.write(">" + r2.text.split(">")[1]) #This prints the first CDS (when there are splice variants)
           else:
               out_fh.write(">%s_%s\n%s\n" % (ortho['target']['id'], 
                                          ortho['target']['species'], 
@@ -78,14 +71,21 @@ def main(argv):
   else:
       out_fh.write(r.text + '\n')
 
+def run_query(request):
+    r = requests.get(request)
+    if not r.ok:
+        r.raise_for_status()
+        sys.exit("query %s not recognised" % server+ext)
+    return r  
+
 def clean_name(name):
     name = name.replace('>', '')
     if len(name.split('_')) > 2:
         name = '_'.join(name.split('_')[:-2])
     elif len(name.split('_')) == 2:
         sys.exit("Name %s contains one underscore" % name)
-    if name[-2] != '.':
-        name += '.1'
+    if name[-2] == '.' and name[-1].isdigit(): #this will fail if there are more than 9 transcripts, but I think that's OK
+        name = name[:-2]
     return name
     
 if __name__ == "__main__":
