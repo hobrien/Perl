@@ -1,7 +1,7 @@
 #!/Users/HeathOBrien/anaconda/bin/python
 
 
-import sys, getopt, requests, warnings
+import sys, getopt, requests, warnings, re
 
 def main(argv):
   usage = 'Ensembl.py -q <query> -o <outfile> -f [tree | aa | cds | ortho | ortho_dna] [-v]'
@@ -71,8 +71,17 @@ def main(argv):
                                          ortho['target']['align_seq'].replace('-',''))
                       )
   else:
-      out_fh.write(r.text + '\n')
+      if outformat == 'cds' and dna_seq(r) != 0:
+          sys.exit("Query %s returned seq with %i non-nucleotide characters. Likely AA seq" % (server+ext, dna_seq(r)))
+      elif outformat == 'aa' and dna_seq(r) == 0:
+          sys.exit("Query %s returned seq with 0 non-nucleotide characters. Likely DNA seq" % (server+ext, dna_seq(r)))
+      else:
+          out_fh.write(r.text + '\n')
 
+def dna_seq(result):
+    seq = ''.join(result.text.split('\n')[1:])
+    return len(re.findall('[^AaCcGgTtNn]', seq))
+    
 def run_query(request):
     if verbose_level > 0:
         sys.stderr.write(request+"\n")
