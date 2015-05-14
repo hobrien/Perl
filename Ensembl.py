@@ -40,7 +40,7 @@ def main(argv):
       ext = "/overlap/id/%s?feature=cds;content-type=application/json" % query
       r = run_query(server+ext)
       transcriptID = r.json()[0]['id']
-      ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds" % transcriptID
+      ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds;object_type=transcript" % transcriptID
   elif outformat == 'orthologs' or outformat == 'ortho_dna':
       ext = "/homology/id/%s?content-type=application/json;type=orthologues" % query
   else:
@@ -60,7 +60,7 @@ def main(argv):
               continue
           if  outformat == 'ortho_dna':
               query = ortho['target']['id']
-              ext = "/sequence/id/%s?multiple_sequences=1;content-type=text/x-fasta;type=cds" % query
+              ext = "/sequence/id/%s?multiple_sequences=1;content-type=text/x-fasta;type=cds;object_type=transcript" % query
               if verbose_level > 0:
                   sys.stderr.write(server+ext+"\n")
               r2 = run_query(server+ext)
@@ -74,7 +74,7 @@ def main(argv):
       if outformat == 'cds' and dna_seq(r) != 0:
           sys.exit("Query %s returned seq with %i non-nucleotide characters. Likely AA seq" % (server+ext, dna_seq(r)))
       elif outformat == 'aa' and dna_seq(r) == 0:
-          sys.exit("Query %s returned seq with 0 non-nucleotide characters. Likely DNA seq" % (server+ext, dna_seq(r)))
+          sys.exit("Query %s returned seq with 0 non-nucleotide characters. Likely DNA seq" % server+ext)
       else:
           out_fh.write(r.text + '\n')
 
