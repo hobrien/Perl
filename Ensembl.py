@@ -97,8 +97,8 @@ def run_query(request):
         sys.stderr.write(request+"\n")
     r = requests.get(request)
     if not r.ok:
-        warnings.warn("query %s not recognised\n\n" % request)
-        r.raise_for_status()
+        warnings.warn("query %s not recognised" % request)
+        #r.raise_for_status()
         sys.exit()
     return r  
 
@@ -110,7 +110,12 @@ def clean_name(name):
         sys.exit("Name %s contains one underscore" % name)
     return name
     
+def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
+    return ' %s:%s: %s: %s\n' % (filename, lineno, category.__name__, message)
+
+    
 if __name__ == "__main__":
+   warnings.formatwarning = warning_on_one_line
    main(sys.argv[1:])
 
 
