@@ -45,10 +45,10 @@ def main(argv):
       #transcriptIDs don't show up with this query (if I add object_type=transcript it 
       #throws an error. The only solution that I can think of is to try to guess what the 
       #transcriptID is likely to be:
-      transcriptID = transcriptID.replace('-PA', '-TA')
-      transcriptID = transcriptID.replace('-P', '')
-      transcriptID = re.sub(r'_P(\d\d)$', '_T\1', transcriptID)
-      transcriptID = re.sub(r'(chr\d)P', '\1T', transcriptID)
+      transcriptID = transcriptID.replace(r'-PA', r'-TA')
+      transcriptID = transcriptID.replace(r'-P', r'')
+      transcriptID = re.sub(r'_P(\d\d)$', r'_T\1', transcriptID)
+      transcriptID = re.sub(r'(chr\d+)P', r'\1T', transcriptID)
         
       ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds;object_type=transcript" % transcriptID
   elif outformat == 'orthologs' or outformat == 'ortho_dna':
