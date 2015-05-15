@@ -40,6 +40,16 @@ def main(argv):
       ext = "/overlap/id/%s?feature=cds;content-type=application/json" % query
       r = run_query(server+ext)
       transcriptID = r.json()[0]['id']
+      
+      #I'm going to introduce some ugly hacks to deal with the fact that a lot of the
+      #transcriptIDs don't show up with this query (if I add object_type=transcript it 
+      #throws an error. The only solution that I can think of is to try to guess what the 
+      #transcriptID is likely to be:
+      transcriptID = transcriptID.replace('-PA', '-TA')
+      transcriptID = transcriptID.replace('-P', '')
+      transcriptID = re.sub(r'_P(\d\d)$', '_T\1', transcriptID)
+      transcriptID = re.sub(r'(chr\d)P', '\1T', transcriptID)
+        
       ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds;object_type=transcript" % transcriptID
   elif outformat == 'orthologs' or outformat == 'ortho_dna':
       ext = "/homology/id/%s?content-type=application/json;type=orthologues" % query
