@@ -33,7 +33,7 @@ def main(argv):
   
   query = clean_name(query)
   if outformat == 'tree':
-      ext = "/genetree/member/id/%s?nh_format=simple" % query
+      ext = "/genetree/member/id/%s?content-type=text/x-nh;nh_format=simple" % query.split('.')[0]
   elif outformat == 'aa':
       ext = "/sequence/id/%s?content-type=text/x-fasta;type=protein" % query
   elif outformat == 'cds':
@@ -107,7 +107,7 @@ def clean_name(name):
     if len(name.split('_')) > 2:
         name = '_'.join(name.split('_')[:-2])
     elif len(name.split('_')) == 2:
-        sys.exit("Name %s contains one underscore" % name)
+        warnings.warn("Name %s contains one underscore" % name)
     return name
     
 def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
