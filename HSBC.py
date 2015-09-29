@@ -11,7 +11,7 @@ for line in fileinput.input(sys.argv[2:]):
   line = line.rstrip()
   m = first_line.match(line)
   if m:
-    date = "%s-%s-14" % (m.group(1), m.group(2))
+    date = "%s-%s-15" % (m.group(1), m.group(2))
     transaction_type = m.group(15)
     venue = m.group(24)
   else:
