@@ -5,7 +5,7 @@ A number of functions to add data to Selaginella database from csv files or from
 files"""
 
 
-import sys, getopt, csv, warnings
+import sys, getopt, csv, warnings, re
 import MySQLdb as mdb
 from Bio import SeqIO
 from os import path
@@ -17,8 +17,9 @@ def main(argv):
   infilename = ''
   seqfilename = ''
   database = 'SelaginellaGenomics'
+  name = ''
   try:
-     opts, args = getopt.getopt(argv,"hf:i:s:d:",["function", "infile=", "seqfile=", "database="])
+     opts, args = getopt.getopt(argv,"hf:i:s:d:n:",["function", "infile=", "seqfile=", "database=", "name="])
   except getopt.GetoptError:
      print usage
      sys.exit(2)
@@ -34,10 +35,12 @@ def main(argv):
         seqfilename = arg
      elif opt in ("-d", "--database"):
         database = arg
+     elif opt in ("-n", "--name"):
+        name = arg
         
   if function == 'ref_coding':
     infilename = 1  #don't need a infile for this function. This prevents an error in the following lines
-  if not infilename or not function:
+  if (not infilename and not seqfilename) or not function:
      sys.exit(usage)
   con = mdb.connect('localhost', 'root', '', database);
   with con:
@@ -57,6 +60,37 @@ def main(argv):
       non_redundant(cur, infilename)
     if function == 'genbank':
       genbank(cur, infilename, seqfilename)
+    if function == 'aligned':
+      add_aligned(cur, seqfilename)
+    if function == 'counts':
+      add_counts(cur, infilename, name)
+
+def add_counts(cur, infilename, name):
+  infile = open(infilename, 'r')
+  for line in infile.readlines():
+    line = line.strip()
+    (geneID, count) = line.split('\t')
+    if geneID not in ('no_feature', 'ambiguous', 'too_low_aQual', 'not_aligned', 'alignment_not_unique'):
+      cur.execute("SELECT * FROM Counts WHERE geneID = %s", (geneID))
+      results = cur.fetchall()
+      if len(results) == 1:
+        #print "UPDATE Counts SET %s = '%s' WHERE geneID = '%s'" % (name, count, geneID)
+        cur.execute("UPDATE counts SET %s = '%s' WHERE geneID = '%s'" % (name, count, geneID))
+      elif len(results) == 0:
+        #print "INSERT INTO Counts(geneID, %s) VALUES('%s', '%s')" % (name, geneID, count)
+        cur.execute("INSERT INTO Counts(geneID, %s) VALUES('%s', '%s')" % (name, geneID, count))
+      else:
+        sys.exit("%s entries in DB for %s" % (len(results), geneID))
+        
+def add_aligned(cur, seqfilename):
+  for sequence in SeqIO.parse(seqfilename, "fasta"):
+    try:
+      #print 'INSERT INTO Sequences(seqID, locus, accessionID, sequence)  VALUES(%s, %s, %s, %s)' , (seqID, locus, accessionID, sequence)
+      cur.execute('UPDATE Sequences SET aligned = %s WHERE seqID = %s' , (sequence.seq.upper(), sequence.id))
+    except mdb.IntegrityError, e:
+      #warnings.warn("%s" % e)
+      pass
+
 
 """add genbank sequences obtained using something like:
 "blastdbcmd -db nt -entry_batch genbankIDs.txt >sequences.fa"
@@ -99,14 +133,16 @@ def non_redundant(cur, infilename):
 
 def add_orthologs(cur, infilename):
   infile = open(infilename, 'r')
+  regex = re.compile('\d+')
   for line in infile.readlines():
     genes = line.split()
     group = genes.pop(0)
-    group = group[4:-1]
+    group = regex.findall(group)[-1]
     for gene in genes:
       gene = gene.replace('|','_')
+      gene = gene.replace('KRUS', 'KRAUS')
       try:
-        print "INSERT INTO OrthoGroups (geneID, orthoID) VALUES ('%s', '%s')" % (gene, group)
+        #print "INSERT INTO OrthoGroups (geneID, orthoID) VALUES ('%s', '%s')" % (gene, group)
         cur.execute("INSERT INTO OrthoGroups (geneID, orthoID) VALUES (%s, %s)" , (gene, group))
       except mdb.IntegrityError, e:
         warnings.warn("%s" % e)

@@ -1,4 +1,0 @@
-test1	Trinity	exon	1	618	.	+	.	gene_id "XLOC_000001"; transcript_id "TCONS_00000001"; exon_number "1"; oId "CUFF.1.1"; tss_id "TSS1";
-test1	Ensembl	CDS	301	318	.	+	.	gene_id "XLOC_000001"; transcript_id "TCONS_00000001"; exon_number "1"; oId "CUFF.1.1"; tss_id "TSS1";
-test2	Trinity	exon	1	618	.	+	.	gene_id "XLOC_000002"; transcript_id "TCONS_00000002"; exon_number "1"; oId "CUFF.2.1"; tss_id "TSS2";
-test2	Ensembl	CDS	299	320	.	+	.	gene_id "XLOC_000002"; transcript_id "TCONS_00000002"; exon_number "1"; oId "CUFF.2.1"; tss_id "TSS2";
