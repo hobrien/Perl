@@ -3,6 +3,7 @@ import fileinput, getopt, sys, re, os
 import pandas as pd
 
 """default filetype is transactions. graph not made by default"""
+
 def main(argv):
     infilename = ''
     filetype = 'transactions'
