@@ -1,13 +1,14 @@
-#!/usr/local/bin/python
+#!/Users/HeathOBrien/anaconda/bin/python
 import fileinput, getopt, sys, re, os
+import pandas as pd
 
-
+"""default filetype is transactions. graph not made by default"""
 def main(argv):
     infilename = ''
     filetype = 'transactions'
     graph = 0
     balance_forward = ''
-    usage = "HSBC.py -b balance_forward -i new_transactions [-t statement] [ -g] >>~/Desktop/Desktop_files/transactions.txt"
+    usage = "HSBC.py -b balance_forward -i new_transactions [-t statement|transactions|csv] [ -g] >>~/Desktop/Desktop_files/transactions.txt"
     try:
         opts, args = getopt.getopt(argv,"hgi:b:t:",["help", "graph", "infile=", "filetype=", "balance="])
     except getopt.GetoptError:
@@ -33,6 +34,8 @@ def main(argv):
         sys.exit(usage)
     if filetype == 'transactions':
         ParseTransactions(infilename, balance_forward)
+    elif filetype == 'csv':
+        ParseCSV(infilename, balance_forward)
     else:
         ParseStatement(infilename, balance_forward)
     if graph == 1:
@@ -84,6 +87,15 @@ def ParseStatement(infilename, balance):
         else:
             venue += line.replace("'", "")
 
+def ParseCSV(infilename, balance):
+    transactions = pd.DataFrame.from_csv(infilename, sep=',', index_col=False)
+    transactions = transactions.iloc[::-1]
+    transactions['Balance'] = transactions.Amount.cumsum() + balance
+    transactions['Type'] = ''
+    transactions['Date'] = transactions['Date'].str.replace(' ', '-').str.replace('20', '')
+    transactions = transactions[['Date', 'Type', 'Description', 'Amount', 'Balance']]
+    print pd.DataFrame.to_csv(transactions, index=False, header=False, sep='\t')
+    
 def ParseTransactions(infilename, balance_forward):      
     first_line = re.compile('^D?(\d\d) ((Jan)|(Feb)|(Mar)|(Apr)|(May)|(Jun)|(Jul)|(Aug)|(Sep)|(Oct)|(Nov)|(Dec)) *\t *((ATM)|(BP)|(CR)|(DD)|(DR)|(SO)|(TFR)|(VIS)) *\t *(.*)')
     last_line = re.compile('^([\t ]+)(\d+\.\d\d)([\t ]+)(\d+\.\d\d)')
@@ -118,6 +130,7 @@ def ParseTransactions(infilename, balance_forward):
                 venue = venue.replace('PROPERTY CONCEPT OBRIEN DIEZMANN', 'PROPERTY CONCEPT') 
                 venue = venue.replace("'", '') 
                 venue = venue.replace('"', '') 
+                venue = venue.replace('#', '') 
                 output.append([date, transaction_type, venue, str(balance_change), str(balance)])
             elif '\t' in line:
                 sys.exit("line %s (%s) of transaction on %s formatted incorrectly" % (linenum, line, date))
