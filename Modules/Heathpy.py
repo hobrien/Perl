@@ -16,6 +16,17 @@ def warning_on_one_line(message, category, filename, lineno, file=None, line=Non
 
 warnings.formatwarning = warning_on_one_line
 
+def UnwindObject(object, depth=-1):
+  depth += 1
+  if type(object) is list:
+    print "\n", "   " * depth, "item 1 of %s: " % str(len(object)), UnwindObject(object[0], depth),
+  elif type(object) is dict:
+    for key in object.keys():
+      print "\n", "   " * depth, key + ":", UnwindObject(object[key], depth),
+  else:
+    return object
+  return ''  
+
 def make_seq(seqstr, id):
    alpha = IUPAC.unambiguous_dna
    seq = Seq(seqstr, alpha)
@@ -177,12 +188,16 @@ def remove_dots(aln):
   return new_aln
     
 def write_phylip(alignment, out_fh):
-  out_fh.write(''.join((str(len(alignment)), ' ', str(len(alignment[0])), '\n')))
-  name_len = 10
-  for seq in alignment:
-    name_len = max(name_len, len(seq.id)+1)
-  for seq in alignment:
-    out_fh.write(''.join((seq.id.ljust(name_len), str(seq.seq), '\n')))
+  print len(alignment[0])
+  if len(alignment[0]) > 0:             # this means that you will get an empty file if the sequence-length is zero    
+    out_fh.write(''.join((str(len(alignment)), ' ', str(len(alignment[0])), '\n')))
+    name_len = 10
+    for seq in alignment:
+      name_len = max(name_len, len(seq.id)+1)
+    for seq in alignment:
+      out_fh.write(''.join((seq.id.ljust(name_len), str(seq.seq), '\n')))
+  else:
+    print "Skipping empty alignment"
   return out_fh
 
 def flatten_GTF(input):
@@ -221,14 +236,17 @@ def flatten_GTF(input):
     
     del feature['score']
   except KeyError:
-    sys.exit("no score tag")
+    fields.append('.')
   try:
-    if int(feature['strand']) == 0:
-      fields.append('-')
-    elif int(feature['strand']) == 1:
-      fields.append('+')
-    elif feature['strand'] == '.':
-      fields.append('.')
+    try:
+      if int(feature['strand']) == 0:
+        feature['strand'] = '-'
+      elif int(feature['strand']) == 1:
+        feature['strand'] = '+'
+    except ValueError:
+      pass
+    if feature['strand'] in ('.', '+', '-'):
+      fields.append(feature['strand'])
     else:
       sys.exit("strand %s not recognized" % feature['strand'])
     del feature['strand']
@@ -236,6 +254,7 @@ def flatten_GTF(input):
     sys.exit("no strand tag")
   try:
     fields.append(feature['frame'])
+    sys.stderr.write(feature['frame'] + '\n')
     del feature['frame']
   except KeyError:
     sys.exit("no frame tag")
@@ -244,7 +263,9 @@ def flatten_GTF(input):
   keys.sort()
   #for key in sorted(feature, key=feature.get):
   for key in keys:
+    sys.stderr.write(key +'\n')
     attributes = attributes + '%s "%s"; ' % (key, feature[key])
+  sys.stderr.write(attributes + '\n')
   fields.append(attributes)
   return "\t".join(map(str, fields))
 
