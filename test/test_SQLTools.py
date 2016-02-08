@@ -1,8 +1,8 @@
 from SQLTools import combine_clusters
 import MySQLdb as mdb
-from nose.tools import *
+from nose import with_setup
 
-def test_combine_clusters():
+def setup_each():
   con = mdb.connect('localhost', 'root', '', 'test')
   with con:
     cur = con.cursor()
@@ -27,10 +27,15 @@ def test_combine_clusters():
                 	   (5,'Seq2',2),
                 	   (6,'Seq4',2);"""
                 )
+  
+
+@with_setup(setup_each)
+def test_combine_clusters():
 
   combine_clusters(2,1,'test')
   con = mdb.connect('localhost', 'root', '', 'test')
   with con:
+    cur = con.cursor()
     cur.execute("SELECT seqid, cluster FROM cluster_num")
     results = cur.fetchall()
     print results
