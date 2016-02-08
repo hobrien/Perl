@@ -31,31 +31,32 @@ def main(argv):
       outformat = 'orthologs'
   server = "http://rest.ensemblgenomes.org"
   
-  query = clean_name(query)
+  #query = clean_name(query)
   if outformat == 'tree':
       ext = "/genetree/member/id/%s?content-type=text/x-nh;nh_format=simple" % query.split('.')[0]
+      r = run_query(server+ext)
   elif outformat == 'aa':
       ext = "/sequence/id/%s?content-type=text/x-fasta;type=protein" % query
-  elif outformat == 'cds':
-      ext = "/overlap/id/%s?feature=cds;content-type=application/json" % query
       r = run_query(server+ext)
-      transcriptID = r.json()[0]['id']
+
+  elif outformat == 'cds':
+      #this is pretty complicated because things are so inconsistent
+      ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds;object_type=transcript" % peptide_to_transcript(query)
+      if verbose_level > 0:
+          sys.stderr.write(server+ext+"\n")
+      r = requests.get(server+ext)
+      if not r.ok:
+          ext = "/overlap/id/%s?feature=cds;content-type=application/json" % query
+          r = run_query(server+ext)
+          transcriptID = r.json()[0]['id']
       
-      #I'm going to introduce some ugly hacks to deal with the fact that a lot of the
-      #transcriptIDs don't show up with this query (if I add object_type=transcript it 
-      #throws an error. The only solution that I can think of is to try to guess what the 
-      #transcriptID is likely to be:
-      transcriptID = transcriptID.replace(r'-PA', r'-TA')
-      transcriptID = transcriptID.replace(r'-P', r'')
-      transcriptID = re.sub(r'_P(\d\d)$', r'_T\1', transcriptID)
-      transcriptID = re.sub(r'(chr\d+)P', r'\1T', transcriptID)
-        
-      ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds;object_type=transcript" % transcriptID
+          ext = "/sequence/id/%s?content-type=text/x-fasta;type=cds;object_type=transcript" % peptide_to_transcript(transcriptID)
+          r = run_query(server+ext)
   elif outformat == 'orthologs' or outformat == 'ortho_dna':
       ext = "/homology/id/%s?content-type=application/json;type=orthologues" % query
+      r = run_query(server+ext)
   else:
       sys.exit("format %s not recognised\n\n%s" % (outformat, usage))
-  r = run_query(server+ext)
   if outfile:
       out_fh = open(outfile, 'w')
   else:
@@ -98,7 +99,8 @@ def run_query(request):
     r = requests.get(request)
     if not r.ok:
         warnings.warn("query %s not recognised" % request)
-        #r.raise_for_status()
+        if verbose_level > 0:
+            r.raise_for_status()
         sys.exit()
     return r  
 
@@ -113,6 +115,17 @@ def clean_name(name):
 def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
     return ' %s:%s: %s: %s\n' % (filename, lineno, category.__name__, message)
 
+def peptide_to_transcript(transcriptID):
+    #I'm going to introduce some ugly hacks to deal with the fact that a lot of the
+    #transcriptIDs don't show up with this query (if I add object_type=transcript it 
+    #throws an error. The only solution that I can think of is to try to guess what the 
+    #transcriptID is likely to be:
+    transcriptID = re.sub(r'-PA$', r'-TA', transcriptID)
+    transcriptID = re.sub(r'-P$', r'', transcriptID)
+    transcriptID = re.sub(r'-P(\d)$', r'-T\1', transcriptID)
+    transcriptID = re.sub(r'_P(\d\d)$', r'_T\1', transcriptID)
+    transcriptID = re.sub(r'(chr\d+)P', r'\1T', transcriptID)
+    return transcriptID
     
 if __name__ == "__main__":
    warnings.formatwarning = warning_on_one_line
