@@ -1,4 +1,4 @@
-#!/Users/HeathOBrien/anaconda/bin/python
+#!/usr/bin/env python
 
 import csv, sys, subprocess, argparse, os
 from Bio import SeqIO
