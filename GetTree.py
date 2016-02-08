@@ -111,23 +111,27 @@ if __name__ == "__main__":
      elif opt in ("-d", "--dir"):
         dirname = arg
 
-  con = mdb.connect('localhost', 'root', '', 'Selaginella')
+  con = mdb.connect('localhost', 'root', '', 'test')
   with con:
     cur = con.cursor()
-    if clusternum:
+    try:
       first = clusternum - 1
       last = clusternum + 1
-    else:
+    except TypeError:
       first -= 1
       last += 1  
-    cur.execute("SELECT clusternum FROM Sequences WHERE clusternum > %s AND clusternum < %s GROUP BY clusternum", (first, last))
+    cur.execute("SELECT cluster FROM OrthoMCL WHERE cluster > %s AND cluster < %s GROUP BY cluster", (first, last))
     clusters = []
     for row in cur.fetchall():
       clusters.append(row[0])
     num_seqs = []
     print "Writing Sequences to file"
     for clusternum in clusters:
-      seqs = get_seqs(cur, clusternum)
+      seqs = []
+      cur.execute("SELECT Sequences.seqid, Sequences.sequence FROM OrthoMCL, Sequences WHERE Sequences.seqid = OrthoMCL.seqid AND OrthoMCL.cluster = %s", clusternum)
+      for (seqid, sequence) in cur.fetchall():
+        seq_record = SeqRecord(Seq(sequence), id=seqid, description = '')
+        seqs.append(seq_record)
       seq_file = path.join(dirname, 'Cluster_' + str(clusternum) + '.fa')
       SeqIO.write(seqs, seq_file, "fasta")
       num_seqs.append(len(seqs))
@@ -150,7 +154,7 @@ if __name__ == "__main__":
       (trimal_res, err) = proc.communicate()
       add_exset(nexus_file, trimal_res)
       subprocess.call(["rm " + "translatorx_*"], shell=True)
-      subprocess.call(["rm", aln_file])
+      #subprocess.call(["rm", aln_file])
 
     print "Making Trees"
     threadList = ["Thread-1", "Thread-2", "Thread-3", "Thread-4", "Thread-5", "Thread-6"]
