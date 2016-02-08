@@ -50,11 +50,12 @@ def SpellCheck(line):
   return line
   
 def AddItalics(line):
-  species = ['Cysoseira stricta', 'C. stricta', 'Cysoseira', 'Dictyota dichotoma', 'D. dichotoma', 'Dictyota', 
+  species = ['Arabidopsis', 'Begonia', 'Cysoseira stricta', 'C. stricta', 'Cysoseira', 
+			 'Dictyota dichotoma', 'D. dichotoma', 'Dictyota', 
   			 'Phaeodactylum tricornutum', 'Pseudo-nitzchia multiseries', 'Selaginella', 'Selaginella kraussiana', 
   			 'S. kraussiana', 'Selaginella moellendorffii', 'S. moellendorffii', 'Selaginella uncinata',
   			 'S. uncinata', 'Selaginella willdenowii', 'S. willdenowii', 'Seminavis robusta', 
-  			 'Thalassiosira pseudonana', 'Thalassiosira punctigera',
+  			 'Spiloxene capensis', 'Thalassiosira pseudonana', 'Thalassiosira punctigera',
              'Zonaria tournefortii', 'Z. tournefortii', 'Zonaria']
   for name in species:
     line = re.sub(r'\b%s\b' % name, " \\\\textit{%s}" % name, line)
