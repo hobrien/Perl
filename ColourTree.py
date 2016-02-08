@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/Users/HeathOBrien/anaconda/bin/python
 
 """
 This will colour-code taxa on trees according to the Selaginella species
@@ -13,9 +13,10 @@ from Heathpy import get_colour
 def main(argv):
   treefilename = ''
   outfilename = ''
+  database = 'test'
   usage = 'ColourTree.py -t <treefile> -o <outfile>'
   try:
-    opts, args = getopt.getopt(argv,"ht:o:",["tree=","out=",])
+    opts, args = getopt.getopt(argv,"ht:o:d:",["tree=","out=","db="])
     if not opts:
       raise getopt.GetoptError('no opts')
   except getopt.GetoptError:
@@ -29,12 +30,14 @@ def main(argv):
        treefilename = arg
     elif opt in ("-o", "--out"):
        outfilename = arg
+    elif opt in ("-d", "--db"):
+       database = arg
 
   tree = Tree(treefilename)
   
   if not outfilename:
     outfilename = treefilename.replace(".nwk", ".pdf")
-  con = mdb.connect('localhost', 'root', '', 'Selaginella');
+  con = mdb.connect('localhost', 'root', '', database);
   with con:
     cur = con.cursor()
     for leaf in tree:
