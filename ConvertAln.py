@@ -108,7 +108,7 @@ def get_extension(format):
   return extension
   
 if __name__ == "__main__":
-  if sys.argv[1] == 'self-test':
+  if len(sys.argv) > 1 and sys.argv[1] == 'self-test':
     from os import path, system
     print "Converting fasta to phylip..."
     infile = path.join(path.expanduser("~"), 'Perl', 't', 'ConvertAln.t.fa')
